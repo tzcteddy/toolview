@@ -222,49 +222,49 @@
         opacity: 0;
         transform: translate(1vw, 0) scale(1);
     }
-}</style><div class="g-loading"><div class="g-container"><div class="g-first"></div><div class="g-ball"></div><div class="g-ball"></div><div class="g-ball"></div><div class="g-ball"></div><div class="g-ball"></div><div class="g-ball"></div><div class="g-ball"></div></div></div></div><script src="./vendors~index~monitor-bundle.js"></script><script src="./vendors~index-bundle.js"></script><script src="./index-bundle.js"></script></body><script>var startTime=new Date().getTime();
-    var endTime=0
-    var app=document.getElementById('app')
-    const config={
-    attributes:true,
-    childList:true,
-    subtree:true
-}
-
-var once=(fn)=>{
-    var onceFlag=true;
-    return ()=>{
-        if(onceFlag){
-            fn()
+}</style><div class="g-loading"><div class="g-container"><div class="g-first"></div><div class="g-ball"></div><div class="g-ball"></div><div class="g-ball"></div><div class="g-ball"></div><div class="g-ball"></div><div class="g-ball"></div><div class="g-ball"></div></div></div><script>var startTime=new Date().getTime();
+            var endTime=0
+            var app=document.getElementById('app')
+            const config={
+            attributes:true,
+            childList:true,
+            subtree:true
         }
-    }
-}
-
-//创建一个观察者实例，连接到一个回调，以便在观察到突变时执行
-const observer=new MutationObserver((mutations,observer)=>{
-    mutations.forEach(mutation=>{
-        if(mutation.type==='childList'){
-            
-           
-            once(()=>{
-                endTime=new Date().getTime()
-                // 停止观察
-                observer.disconnect()
-                console.log('添加或删除一个子节点')
-                if(endTime-startTime<3500){
-                    setTimeout(()=>{
-                        document.querySelector('.g-wrap')?.remove()
-                    },3500-(endTime-startTime))
+        
+        var once=(fn)=>{
+            var onceFlag=true;
+            return ()=>{
+                if(onceFlag){
+                    fn()
                 }
-                // document.querySelector('.g-wrap')?.remove()
-            })()
-            
-            
-        }else if(mutation.type==='attrbutes'){
-            console.log(`${mutation.attributeName}属性被修改了`)
+            }
         }
-    })
-})
-
-//开始观察目标节点的配置突变情况
-observer.observe(app,config)</script></html>
+        
+        //创建一个观察者实例，连接到一个回调，以便在观察到突变时执行
+        const observer=new MutationObserver((mutations,observer)=>{
+            mutations.forEach(mutation=>{
+                if(mutation.type==='childList'){
+                    
+                   
+                    once(()=>{
+                        endTime=new Date().getTime()
+                        // 停止观察
+                        observer.disconnect()
+                        console.log('添加或删除一个子节点')
+                        if(endTime-startTime<3500){
+                            setTimeout(()=>{
+                                document.querySelector('.g-wrap')?.remove()
+                            },3500-(endTime-startTime))
+                        }
+                        // document.querySelector('.g-wrap')?.remove()
+                    })()
+                    
+                    
+                }else if(mutation.type==='attrbutes'){
+                    console.log(`${mutation.attributeName}属性被修改了`)
+                }
+            })
+        })
+        
+        //开始观察目标节点的配置突变情况
+        observer.observe(app,config)</script></div><script src="./vendors~index~monitor-bundle.js"></script><script src="./vendors~index-bundle.js"></script><script src="./index-bundle.js"></script></body></html>

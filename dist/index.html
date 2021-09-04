@@ -115,4 +115,156 @@
         return val;
     }
 
-})(window, window['lib'] || (window['lib'] = {}));</script></head><body><div id="app"></div><script src="./vendors~index~monitor-bundle.js"></script><script src="./vendors~index-bundle.js"></script><script src="./index-bundle.js"></script></body></html>
+})(window, window['lib'] || (window['lib'] = {}));</script></head><body><div id="app"></div><div class="g-wrap"><style>.g-wrap{
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: rgba(0,0,0,0.6);
+            z-index: 1000;
+        }
+            .g-loading{
+                width: 2rem;
+                height:2rem ;
+                /* filter: blur(4px) contrast(8); */
+                background: #fff;
+                border-radius: 10px;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+                overflow: hidden;
+            }
+            .g-container {
+            /* margin: auto; */
+            position: relative;
+            width: .48rem;
+            height: .48rem;
+            }
+
+.g-ball,
+.g-first{
+    position: absolute;
+    top:0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: var(--c2);
+    border-radius: 50%;
+    transform: translate(-700%, 0);
+    opacity: 0;
+     /* animation: move 3s infinite linear; */
+}
+
+
+.g-ball:nth-child(1) {
+        animation: move 3.5s infinite 0.3s linear;
+    }
+    .g-ball:nth-child(2) {
+        animation: move 3.5s infinite 0.5s linear;
+    }
+    .g-ball:nth-child(3) {
+        animation: move 3.5s infinite 0.7s linear;
+    }
+    .g-ball:nth-child(4) {
+        animation: move 3.5s infinite 0.9s linear;
+    }
+    .g-ball:nth-child(5) {
+        animation: move 3.5s infinite 1.1s linear;
+    }
+    .g-ball:nth-child(6) {
+        animation: move 3.5s infinite 1.3s linear;
+    }
+    .g-ball:nth-child(7) {
+        animation: move 3.5s infinite 1.5s linear;
+    }
+
+.g-first {
+    animation: scaleMove 3.5s infinite linear;
+}
+
+@keyframes move {
+    25% {
+        opacity: 1;
+        transform: translate(-1vw, 0);
+    }
+    50% {
+        opacity: 1;
+        transform: translate(1vw, 0);
+    }
+    75%,
+    100% {
+        opacity: 0;
+        transform: translate(700%, 0);
+    }
+}
+
+
+@keyframes scaleMove {
+    25% {
+        opacity: 1;
+        transform: translate(-1vw, 0);
+    }
+    35% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    70% {
+        opacity: 1;
+        transform: translate(1vw, 0) scale(1.5);
+    }
+    90%,
+    100% {
+        opacity: 0;
+        transform: translate(1vw, 0) scale(1);
+    }
+}</style><div class="g-loading"><div class="g-container"><div class="g-first"></div><div class="g-ball"></div><div class="g-ball"></div><div class="g-ball"></div><div class="g-ball"></div><div class="g-ball"></div><div class="g-ball"></div><div class="g-ball"></div></div></div></div><script src="./vendors~index~monitor-bundle.js"></script><script src="./vendors~index-bundle.js"></script><script src="./index-bundle.js"></script></body><script>var startTime=new Date().getTime();
+    var endTime=0
+    var app=document.getElementById('app')
+    const config={
+    attributes:true,
+    childList:true,
+    subtree:true
+}
+
+var once=(fn)=>{
+    var onceFlag=true;
+    return ()=>{
+        if(onceFlag){
+            fn()
+        }
+    }
+}
+
+//创建一个观察者实例，连接到一个回调，以便在观察到突变时执行
+const observer=new MutationObserver((mutations,observer)=>{
+    mutations.forEach(mutation=>{
+        if(mutation.type==='childList'){
+            
+           
+            once(()=>{
+                endTime=new Date().getTime()
+                // 停止观察
+                observer.disconnect()
+                console.log('添加或删除一个子节点')
+                if(endTime-startTime<3500){
+                    setTimeout(()=>{
+                        document.querySelector('.g-wrap')?.remove()
+                    },3500-(endTime-startTime))
+                }
+                // document.querySelector('.g-wrap')?.remove()
+            })()
+            
+            
+        }else if(mutation.type==='attrbutes'){
+            console.log(`${mutation.attributeName}属性被修改了`)
+        }
+    })
+})
+
+//开始观察目标节点的配置突变情况
+observer.observe(app,config)</script></html>

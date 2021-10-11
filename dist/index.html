@@ -1,309 +1,338 @@
 <!DOCTYPE html><html lang="en" style="font-size: 72px;
-        --white: #ffffff;
-        --black: #000000;
-        --c0: #230202;
-        --c1: #950707;
-        --c2: #af0808;
-        --c3: #c90909;
-        --c4: #ff0e0e;
-        --c5: #ff0f0f;"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="viewport" content="width=device-width,user-scalable=no,initial-scale=1,maximum-scale=1,minimum-scale=1"><meta name="keywords" content="前端开发, 前端开发工具, 开发工具, 工程化,工程化工具, js, node, css, 在线工具,vscode, 插件"><meta name="description" content="toolkit是前端开发,全栈开发,工程化的常用工具箱"><title>对点</title><link rel="icon" href="https://tzcteddy.github.io/knows-point/static/knows-point.png"><script>(function (win, lib) {
-                var doc = win.document;
-                var docEl = doc.documentElement;
-                var metaEl = doc.querySelector('meta[name="viewport"]');
-                var flexibleEl = doc.querySelector('meta[name="flexible"]');
-                var dpr = 0;
-                var scale = 0;
-                var tid;
-                var flexible = lib.flexible || (lib.flexible = {});
+    --white: #ffffff;
+    --black: #000000;
+    --white-shadow:#d9d9d9;
+    --bg:#efefef;"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="viewport" content="width=device-width,user-scalable=no,initial-scale=1,maximum-scale=1,minimum-scale=1"><meta name="keywords" content="前端开发, 前端开发工具, 开发工具, 工程化,工程化工具, js, node, css, 在线工具,vscode, 插件"><meta name="description" content="toolkit是前端开发,全栈开发,工程化的常用工具箱"><title>对点</title><link rel="icon" href="https://tzcteddy.github.io/knows-point/static/knows-point.png"><script>window.MAIN_COLOR = "#f3b654"//"#af0808";
+      window.COLOR_CONFIG = {
+        c0: colorLuminance(color, -0.8),
+        c1: colorLuminance(color, -0.15),
+        c2: color,
+        c3: colorLuminance(color, 0.15),
+        c4: colorLuminance(color, 0.8),
+        c5: colorLuminance(color, 0.9),
+      };
+      const cssText=docuemnt.documentElement.style.cssText
+      docuemnt.documentElement.style.cssText=cssText+resolveColor(window.COLOR_CONFIG)
 
-                if (metaEl) {
-                    console.warn("将根据已有的meta标签来设置缩放比例");
-                    var match = metaEl
-                        .getAttribute("content")
-                        .match(/initial-scale=([d.]+)/);
-                    if (match) {
-                        scale = parseFloat(match[1]);
-                        dpr = parseInt(1 / scale);
-                    }
-                } else if (flexibleEl) {
-                    var content = flexibleEl.getAttribute("content");
-                    if (content) {
-                        var initialDpr = content.match(/initial-dpr=([d.]+)/);
-                        var maximumDpr = content.match(/maximum-dpr=([d.]+)/);
-                        if (initialDpr) {
-                            dpr = parseFloat(initialDpr[1]);
-                            scale = parseFloat((1 / dpr).toFixed(2));
-                        }
-                        if (maximumDpr) {
-                            dpr = parseFloat(maximumDpr[1]);
-                            scale = parseFloat((1 / dpr).toFixed(2));
-                        }
-                    }
-                }
+      const resolveColor=(colorConfig)=>{
+          var str=''
+          for(key in colorConfig){
+              str+=`--${key}:${colorConfig[key]}`
+          }
+          return str
+      }
+      const colorLuminance = (hex, lum) => {
+        // validate hex string
+        hex = String(hex).replace(/[^0-9a-f]/gi, "");
+        if (hex.length < 6) {
+          hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+        }
+        lum = lum || 0;
 
-                if (!dpr && !scale) {
-                    var isAndroid = win.navigator.appVersion.match(/android/gi);
-                    var isIPhone = win.navigator.appVersion.match(/iphone/gi);
-                    var devicePixelRatio = win.devicePixelRatio;
-                    if (isIPhone) {
-                        // iOS下，对于2和3的屏，用2倍的方案，其余的用1倍方案
-                        if (devicePixelRatio >= 3 && (!dpr || dpr >= 3)) {
-                            dpr = 3;
-                        } else if (
-                            devicePixelRatio >= 2 &&
-                            (!dpr || dpr >= 2)
-                        ) {
-                            dpr = 2;
-                        } else {
-                            dpr = 1;
-                        }
-                    } else {
-                        // 其他设备下，仍旧使用1倍的方案
-                        dpr = 1;
-                    }
-                    scale = 1 / dpr;
-                }
+        // convert to decimal and change luminosity
+        let rgb = "#",
+          c,
+          i;
+        for (i = 0; i < 3; i++) {
+          c = parseInt(hex.substr(i * 2, 2), 16);
+          c = Math.round(Math.min(Math.max(0, c + c * lum), 255)).toString(16);
+          rgb += ("00" + c).substr(c.length);
+        }
 
-                docEl.setAttribute("data-dpr", dpr);
-                if (!metaEl) {
-                    metaEl = doc.createElement("meta");
-                    metaEl.setAttribute("name", "viewport");
-                    metaEl.setAttribute(
-                        "content",
-                        "initial-scale=" +
-                            scale +
-                            ", maximum-scale=" +
-                            scale +
-                            ", minimum-scale=" +
-                            scale +
-                            ", user-scalable=no"
-                    );
-                    if (docEl.firstElementChild) {
-                        docEl.firstElementChild.appendChild(metaEl);
-                    } else {
-                        var wrap = doc.createElement("div");
-                        wrap.appendChild(metaEl);
-                        doc.write(wrap.innerHTML);
-                    }
-                }
+        return rgb;
+      };</script><script>(function (win, lib) {
+        var doc = win.document;
+        var docEl = doc.documentElement;
+        var metaEl = doc.querySelector('meta[name="viewport"]');
+        var flexibleEl = doc.querySelector('meta[name="flexible"]');
+        var dpr = 0;
+        var scale = 0;
+        var tid;
+        var flexible = lib.flexible || (lib.flexible = {});
 
-                function refreshRem() {
-                    var width = docEl.getBoundingClientRect().width;
-                    if (width / dpr > 540) {
-                        width = 540 * dpr;
-                    }
-                    var rem = width / 7.5;
-                    docEl.style.fontSize = rem + "px";
-                    flexible.rem = win.rem = rem;
-                }
+        if (metaEl) {
+          console.warn("将根据已有的meta标签来设置缩放比例");
+          var match = metaEl
+            .getAttribute("content")
+            .match(/initial-scale=([d.]+)/);
+          if (match) {
+            scale = parseFloat(match[1]);
+            dpr = parseInt(1 / scale);
+          }
+        } else if (flexibleEl) {
+          var content = flexibleEl.getAttribute("content");
+          if (content) {
+            var initialDpr = content.match(/initial-dpr=([d.]+)/);
+            var maximumDpr = content.match(/maximum-dpr=([d.]+)/);
+            if (initialDpr) {
+              dpr = parseFloat(initialDpr[1]);
+              scale = parseFloat((1 / dpr).toFixed(2));
+            }
+            if (maximumDpr) {
+              dpr = parseFloat(maximumDpr[1]);
+              scale = parseFloat((1 / dpr).toFixed(2));
+            }
+          }
+        }
 
-                win.addEventListener(
-                    "resize",
-                    function () {
-                        clearTimeout(tid);
-                        tid = setTimeout(refreshRem, 300);
-                    },
-                    false
-                );
-                win.addEventListener(
-                    "pageshow",
-                    function (e) {
-                        if (e.persisted) {
-                            clearTimeout(tid);
-                            tid = setTimeout(refreshRem, 300);
-                        }
-                    },
-                    false
-                );
+        if (!dpr && !scale) {
+          var isAndroid = win.navigator.appVersion.match(/android/gi);
+          var isIPhone = win.navigator.appVersion.match(/iphone/gi);
+          var devicePixelRatio = win.devicePixelRatio;
+          if (isIPhone) {
+            // iOS下，对于2和3的屏，用2倍的方案，其余的用1倍方案
+            if (devicePixelRatio >= 3 && (!dpr || dpr >= 3)) {
+              dpr = 3;
+            } else if (devicePixelRatio >= 2 && (!dpr || dpr >= 2)) {
+              dpr = 2;
+            } else {
+              dpr = 1;
+            }
+          } else {
+            // 其他设备下，仍旧使用1倍的方案
+            dpr = 1;
+          }
+          scale = 1 / dpr;
+        }
 
-                if (doc.readyState === "complete") {
-                    doc.body.style.fontSize = 12 * dpr + "px";
-                } else {
-                    doc.addEventListener(
-                        "DOMContentLoaded",
-                        function (e) {
-                            doc.body.style.fontSize = 12 * dpr + "px";
-                        },
-                        false
-                    );
-                }
+        docEl.setAttribute("data-dpr", dpr);
+        if (!metaEl) {
+          metaEl = doc.createElement("meta");
+          metaEl.setAttribute("name", "viewport");
+          metaEl.setAttribute(
+            "content",
+            "initial-scale=" +
+              scale +
+              ", maximum-scale=" +
+              scale +
+              ", minimum-scale=" +
+              scale +
+              ", user-scalable=no"
+          );
+          if (docEl.firstElementChild) {
+            docEl.firstElementChild.appendChild(metaEl);
+          } else {
+            var wrap = doc.createElement("div");
+            wrap.appendChild(metaEl);
+            doc.write(wrap.innerHTML);
+          }
+        }
 
-                refreshRem();
+        function refreshRem() {
+          var width = docEl.getBoundingClientRect().width;
+          if (width / dpr > 540) {
+            width = 540 * dpr;
+          }
+          var rem = width / 7.5;
+          docEl.style.fontSize = rem + "px";
+          flexible.rem = win.rem = rem;
+        }
 
-                flexible.dpr = win.dpr = dpr;
-                flexible.refreshRem = refreshRem;
-                flexible.rem2px = function (d) {
-                    var val = parseFloat(d) * this.rem;
-                    if (typeof d === "string" && d.match(/rem$/)) {
-                        val += "px";
-                    }
-                    return val;
-                };
-                flexible.px2rem = function (d) {
-                    var val = parseFloat(d) / this.rem;
-                    if (typeof d === "string" && d.match(/px$/)) {
-                        val += "rem";
-                    }
-                    return val;
-                };
-            })(window, window["lib"] || (window["lib"] = {}));</script></head><body><div id="app"></div><div class="g-wrap"><style>.g-wrap {
-                    position: fixed;
-                    top: 0;
-                    left: 0;
-                    right: 0;
-                    bottom: 0;
-                    display: flex;
-                    justify-content: center;
-                    align-items: center;
-                    background: rgba(255, 255, 255, 0.6);
-                    z-index: 1000;
-                }
-                .g-loading {
-                    width: 2rem;
-                    height: 2rem;
-                    /* filter: blur(4px) contrast(8); */
-                    background: #fff;
-                    border-radius: 10px;
-                    box-shadow:0 0 0.1rem 0 rgb(12 41 55 / 15%) ;
-                    display: flex;
-                    flex-direction: column;
-                    justify-content: center;
-                    align-items: center;
-                    overflow: hidden;
-                }
-                .g-container {
-                    /* margin: auto; */
-                    position: relative;
-                    width: 0.48rem;
-                    height: 0.48rem;
-                }
+        win.addEventListener(
+          "resize",
+          function () {
+            clearTimeout(tid);
+            tid = setTimeout(refreshRem, 300);
+          },
+          false
+        );
+        win.addEventListener(
+          "pageshow",
+          function (e) {
+            if (e.persisted) {
+              clearTimeout(tid);
+              tid = setTimeout(refreshRem, 300);
+            }
+          },
+          false
+        );
 
-                .g-ball,
-                .g-first {
-                    position: absolute;
-                    top: 0;
-                    left: 0;
-                    right: 0;
-                    bottom: 0;
-                    background: var(--c2);
-                    border-radius: 50%;
-                    transform: translate(-3rem, 0);
-                    opacity: 0;
-                    /* animation: move 3s infinite linear; */
-                }
+        if (doc.readyState === "complete") {
+          doc.body.style.fontSize = 12 * dpr + "px";
+        } else {
+          doc.addEventListener(
+            "DOMContentLoaded",
+            function (e) {
+              doc.body.style.fontSize = 12 * dpr + "px";
+            },
+            false
+          );
+        }
 
-                .g-ball:nth-child(1) {
-                    animation: move 3.5s infinite 0.3s linear;
-                }
-                .g-ball:nth-child(2) {
-                    animation: move 3.5s infinite 0.5s linear;
-                }
-                .g-ball:nth-child(3) {
-                    animation: move 3.5s infinite 0.7s linear;
-                }
-                .g-ball:nth-child(4) {
-                    animation: move 3.5s infinite 0.9s linear;
-                }
-                .g-ball:nth-child(5) {
-                    animation: move 3.5s infinite 1.1s linear;
-                }
-                .g-ball:nth-child(6) {
-                    animation: move 3.5s infinite 1.3s linear;
-                }
-                .g-ball:nth-child(7) {
-                    animation: move 3.5s infinite 1.5s linear;
-                }
+        refreshRem();
 
-                .g-first {
-                    transform: translate(-1rem, 0);
-                    animation: scaleMove 3.5s  infinite linear;
-                }
+        flexible.dpr = win.dpr = dpr;
+        flexible.refreshRem = refreshRem;
+        flexible.rem2px = function (d) {
+          var val = parseFloat(d) * this.rem;
+          if (typeof d === "string" && d.match(/rem$/)) {
+            val += "px";
+          }
+          return val;
+        };
+        flexible.px2rem = function (d) {
+          var val = parseFloat(d) / this.rem;
+          if (typeof d === "string" && d.match(/px$/)) {
+            val += "rem";
+          }
+          return val;
+        };
+      })(window, window["lib"] || (window["lib"] = {}));</script></head><body><div id="app"></div><div class="g-wrap"><style>.g-wrap {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          background: rgba(255, 255, 255, 0.6);
+          z-index: 1000;
+        }
+        .g-loading {
+          width: 2rem;
+          height: 2rem;
+          /* filter: blur(4px) contrast(8); */
+          background: #fff;
+          border-radius: 10px;
+          box-shadow: 0 0 0.1rem 0 rgb(12 41 55 / 15%);
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          align-items: center;
+          overflow: hidden;
+        }
+        .g-container {
+          /* margin: auto; */
+          position: relative;
+          width: 0.48rem;
+          height: 0.48rem;
+        }
 
-                @keyframes move {
-                    25% {
-                        opacity: 1;
-                        transform: translate(-1vw, 0);
-                    }
-                    50% {
-                        opacity: 1;
-                        transform: translate(1vw, 0);
-                    }
-                    75%,
-                    100% {
-                        opacity: 0;
-                        transform: translate(3rem, 0);
-                    }
-                }
+        .g-ball,
+        .g-first {
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: var(--c2);
+          border-radius: 50%;
+          transform: translate(-3rem, 0);
+          opacity: 0;
+          /* animation: move 3s infinite linear; */
+        }
 
-                @keyframes scaleMove {
-                    25% {
-                        opacity: 1;
-                        transform: translate(-1vw, 0);
-                    }
-                    35% {
-                        opacity: 1;
-                        transform: scale(1);
-                    }
-                    70% {
-                        opacity: 1;
-                        transform: translate(1vw, 0) scale(1.5);
-                    }
-                    90%,
-                    100% {
-                        opacity: 0;
-                        transform: translate(1vw, 0) scale(1);
-                    }
-                }</style><div class="g-loading"><div class="g-container"><div class="g-first"></div><div class="g-ball"></div><div class="g-ball"></div><div class="g-ball"></div><div class="g-ball"></div><div class="g-ball"></div><div class="g-ball"></div><div class="g-ball"></div></div></div></div><script>var startTime = new Date().getTime();
-            var endTime = 0;
-            var app = document.getElementById("app");
-            var gWrap = document.querySelector(".g-wrap");
-            const config = {
-                attributes: true,
-                childList: true,
-                subtree: true,
-            };
+        .g-ball:nth-child(1) {
+          animation: move 3.5s infinite 0.3s linear;
+        }
+        .g-ball:nth-child(2) {
+          animation: move 3.5s infinite 0.5s linear;
+        }
+        .g-ball:nth-child(3) {
+          animation: move 3.5s infinite 0.7s linear;
+        }
+        .g-ball:nth-child(4) {
+          animation: move 3.5s infinite 0.9s linear;
+        }
+        .g-ball:nth-child(5) {
+          animation: move 3.5s infinite 1.1s linear;
+        }
+        .g-ball:nth-child(6) {
+          animation: move 3.5s infinite 1.3s linear;
+        }
+        .g-ball:nth-child(7) {
+          animation: move 3.5s infinite 1.5s linear;
+        }
 
-            var once = (fn) => {
-                var onceFlag = true;
-                return function () {
-                    var args = Array.prototype.slice.call(arguments);
-                    if (onceFlag) {
-                        onceFlag = false;
-                        fn(...args);
-                    }
-                };
-            };
-            var mutationHandler = once((observer) => {
-                endTime = new Date().getTime();
-                var diffTime = endTime - startTime;
-                // 停止观察
-                observer.disconnect();
-                console.log("添加或删除一个子节点", diffTime);
-                
-                if (diffTime < 3500) {
-                    setTimeout(() => {
-                        gWrap&&gWrap.remove();
-                    }, 1500 - diffTime);
-                } else {
-                    gWrap&&gWrap.remove();
-                }
-            });
-            var documentLoadHandler = once(() => {
-                console.log("DOMContentLoaded");
-                //创建一个观察者实例，连接到一个回调，以便在观察到突变时执行
-                const observer = new MutationObserver((mutations, observer) => {
-                    mutations.forEach((mutation) => {
-                        if (mutation.type === "childList") {
-                            mutationHandler(observer);
-                        } else if (mutation.type === "attrbutes") {
-                            console.log(
-                                `${mutation.attributeName}属性被修改了`
-                            );
-                        }
-                    });
-                });
-                //开始观察目标节点的配置突变情况
-                observer.observe(app, config);
-            });
-            window.addEventListener("DOMContentLoaded", documentLoadHandler);
-            window.addEventListener("load", () => {});</script><script src="./vendors~index-bundle.js"></script><script src="./index-bundle.js"></script></body></html>
+        .g-first {
+          transform: translate(-1rem, 0);
+          animation: scaleMove 3.5s infinite linear;
+        }
+
+        @keyframes move {
+          25% {
+            opacity: 1;
+            transform: translate(-1vw, 0);
+          }
+          50% {
+            opacity: 1;
+            transform: translate(1vw, 0);
+          }
+          75%,
+          100% {
+            opacity: 0;
+            transform: translate(3rem, 0);
+          }
+        }
+
+        @keyframes scaleMove {
+          25% {
+            opacity: 1;
+            transform: translate(-1vw, 0);
+          }
+          35% {
+            opacity: 1;
+            transform: scale(1);
+          }
+          70% {
+            opacity: 1;
+            transform: translate(1vw, 0) scale(1.5);
+          }
+          90%,
+          100% {
+            opacity: 0;
+            transform: translate(1vw, 0) scale(1);
+          }
+        }</style><div class="g-loading"><div class="g-container"><div class="g-first"></div><div class="g-ball"></div><div class="g-ball"></div><div class="g-ball"></div><div class="g-ball"></div><div class="g-ball"></div><div class="g-ball"></div><div class="g-ball"></div></div></div></div><script>var startTime = new Date().getTime();
+      var endTime = 0;
+      var app = document.getElementById("app");
+      var gWrap = document.querySelector(".g-wrap");
+      const config = {
+        attributes: true,
+        childList: true,
+        subtree: true,
+      };
+
+      var once = (fn) => {
+        var onceFlag = true;
+        return function () {
+          var args = Array.prototype.slice.call(arguments);
+          if (onceFlag) {
+            onceFlag = false;
+            fn(...args);
+          }
+        };
+      };
+      var mutationHandler = once((observer) => {
+        endTime = new Date().getTime();
+        var diffTime = endTime - startTime;
+        // 停止观察
+        observer.disconnect();
+        console.log("添加或删除一个子节点", diffTime);
+
+        if (diffTime < 3500) {
+          setTimeout(() => {
+            gWrap && gWrap.remove();
+          }, 1500 - diffTime);
+        } else {
+          gWrap && gWrap.remove();
+        }
+      });
+      var documentLoadHandler = once(() => {
+        console.log("DOMContentLoaded");
+        //创建一个观察者实例，连接到一个回调，以便在观察到突变时执行
+        const observer = new MutationObserver((mutations, observer) => {
+          mutations.forEach((mutation) => {
+            if (mutation.type === "childList") {
+              mutationHandler(observer);
+            } else if (mutation.type === "attrbutes") {
+              console.log(`${mutation.attributeName}属性被修改了`);
+            }
+          });
+        });
+        //开始观察目标节点的配置突变情况
+        observer.observe(app, config);
+      });
+      window.addEventListener("DOMContentLoaded", documentLoadHandler);
+      window.addEventListener("load", () => {});</script><script src="./vendors~index-bundle.js"></script><script src="./index-bundle.js"></script></body></html>

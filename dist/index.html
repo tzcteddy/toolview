@@ -4,24 +4,24 @@
     --white-shadow:#d9d9d9;
     --bg:#efefef;"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="viewport" content="width=device-width,user-scalable=no,initial-scale=1,maximum-scale=1,minimum-scale=1"><meta name="keywords" content="前端开发, 前端开发工具, 开发工具, 工程化,工程化工具, js, node, css, 在线工具,vscode, 插件"><meta name="description" content="toolkit是前端开发,全栈开发,工程化的常用工具箱"><title>对点</title><link rel="icon" href="https://tzcteddy.github.io/knows-point/static/knows-point.png"><script>window.MAIN_COLOR = "#f3b654"//"#af0808";
       window.COLOR_CONFIG = {
-        c0: colorLuminance(color, -0.8),
-        c1: colorLuminance(color, -0.15),
-        c2: color,
-        c3: colorLuminance(color, 0.15),
-        c4: colorLuminance(color, 0.8),
-        c5: colorLuminance(color, 0.9),
+        c0: colorLuminance(window.MAIN_COLOR, -0.8),
+        c1: colorLuminance(window.MAIN_COLOR, -0.15),
+        c2: window.MAIN_COLOR,
+        c3: colorLuminance(window.MAIN_COLOR, 0.15),
+        c4: colorLuminance(window.MAIN_COLOR, 0.8),
+        c5: colorLuminance(window.MAIN_COLOR, 0.9),
       };
-      const cssText=docuemnt.documentElement.style.cssText
-      docuemnt.documentElement.style.cssText=cssText+resolveColor(window.COLOR_CONFIG)
+      const cssText=document.documentElement.style.cssText
+      document.documentElement.style.cssText=cssText+resolveColor(window.COLOR_CONFIG)
 
-      const resolveColor=(colorConfig)=>{
+      function resolveColor(colorConfig){
           var str=''
           for(key in colorConfig){
               str+=`--${key}:${colorConfig[key]}`
           }
           return str
       }
-      const colorLuminance = (hex, lum) => {
+      function colorLuminance (hex, lum){
         // validate hex string
         hex = String(hex).replace(/[^0-9a-f]/gi, "");
         if (hex.length < 6) {

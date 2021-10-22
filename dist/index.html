@@ -2,45 +2,7 @@
     --white: #ffffff;
     --black: #000000;
     --white-shadow:#d9d9d9;
-    --bg:#efefef;"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="viewport" content="width=device-width,user-scalable=no,initial-scale=1,maximum-scale=1,minimum-scale=1"><meta name="keywords" content="前端开发, 前端开发工具, 开发工具, 工程化,工程化工具, js, node, css, 在线工具,vscode, 插件"><meta name="description" content="toolkit是前端开发,全栈开发,工程化的常用工具箱"><title>对点</title><link rel="icon" href="https://tzcteddy.github.io/knows-point/static/knows-point.png"><script src="https://cdn.bootcdn.net/ajax/libs/echarts/5.1.2/echarts.js"></script><script>window.MAIN_COLOR = "#f3b654"//"#af0808";
-      window.COLOR_CONFIG = {
-        c0: colorLuminance(window.MAIN_COLOR, -0.8),
-        c1: colorLuminance(window.MAIN_COLOR, -0.15),
-        c2: window.MAIN_COLOR,
-        c3: colorLuminance(window.MAIN_COLOR, 0.15),
-        c4: colorLuminance(window.MAIN_COLOR, 0.8),
-        c5: colorLuminance(window.MAIN_COLOR, 0.9),
-      };
-      const cssText=document.documentElement.style.cssText
-      document.documentElement.style.cssText=cssText+resolveColor(window.COLOR_CONFIG)
-
-      function resolveColor(colorConfig){
-          var str=''
-          for(key in colorConfig){
-              str+=`--${key}:${colorConfig[key]}`
-          }
-          return str
-      }
-      function colorLuminance (hex, lum){
-        // validate hex string
-        hex = String(hex).replace(/[^0-9a-f]/gi, "");
-        if (hex.length < 6) {
-          hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
-        }
-        lum = lum || 0;
-
-        // convert to decimal and change luminosity
-        let rgb = "#",
-          c,
-          i;
-        for (i = 0; i < 3; i++) {
-          c = parseInt(hex.substr(i * 2, 2), 16);
-          c = Math.round(Math.min(Math.max(0, c + c * lum), 255)).toString(16);
-          rgb += ("00" + c).substr(c.length);
-        }
-
-        return rgb;
-      };</script><script>(function (win, lib) {
+    --bg:#efefef;"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="viewport" content="width=device-width,user-scalable=no,initial-scale=1,maximum-scale=1,minimum-scale=1"><meta name="keywords" content="前端开发, 前端开发工具, 开发工具, 工程化,工程化工具, js, node, css, 在线工具,vscode, 插件"><meta name="description" content="toolkit是前端开发,全栈开发,工程化的常用工具箱"><title>对点</title><link rel="icon" href="https://tzcteddy.github.io/knows-point/static/knows-point.png"><script>(function (win, lib) {
         var doc = win.document;
         var docEl = doc.documentElement;
         var metaEl = doc.querySelector('meta[name="viewport"]');
@@ -177,22 +139,7 @@
           }
           return val;
         };
-      })(window, window["lib"] || (window["lib"] = {}));</script><script>console.table({
-        visibilityState:'状态 hidden visible 对应事件：visibilitychange',
-        characterSet:'只读属性返回当前文档的字符编码',
-        designMode :" 控制整个文档是否可编辑。有效值为 'on' 和 'off' ",
-        readyState :'描述了document 的加载状态。 对应事件：readystatechange',
-        lastModified:"文档最后修改时间"
-      })
-      document.addEventListener('visibilitychange',()=>{
-        console.log(document.visibilityState)
-      })
-      document.addEventListener('online',()=>{
-        console.log(window.navigator.onLine)
-      })
-      document.addEventListener("selectionchange", () => {
-  console.log(document.getSelection());
-});</script></head><body><div id="app"></div><div class="g-wrap"><style>.g-wrap {
+      })(window, window["lib"] || (window["lib"] = {}));</script></head><body><div id="app"></div><div class="g-wrap"><style>.g-wrap {
           position: fixed;
           top: 0;
           left: 0;
@@ -299,7 +246,60 @@
             opacity: 0;
             transform: translate(1vw, 0) scale(1);
           }
-        }</style><div class="g-loading"><div class="g-container"><div class="g-first"></div><div class="g-ball"></div><div class="g-ball"></div><div class="g-ball"></div><div class="g-ball"></div><div class="g-ball"></div><div class="g-ball"></div><div class="g-ball"></div></div></div></div><script>var startTime = new Date().getTime();
+        }</style><div class="g-loading"><div class="g-container"><div class="g-first"></div><div class="g-ball"></div><div class="g-ball"></div><div class="g-ball"></div><div class="g-ball"></div><div class="g-ball"></div><div class="g-ball"></div><div class="g-ball"></div></div></div></div><script>console.table({
+        visibilityState:'状态 hidden visible 对应事件：visibilitychange',
+        characterSet:'只读属性返回当前文档的字符编码',
+        designMode :" 控制整个文档是否可编辑。有效值为 'on' 和 'off' ",
+        readyState :'描述了document 的加载状态。 对应事件：readystatechange',
+        lastModified:"文档最后修改时间"
+      })
+      document.addEventListener('visibilitychange',()=>{
+        console.log(document.visibilityState)
+      })
+      document.addEventListener('online',()=>{
+        console.log(window.navigator.onLine)
+      })
+      document.addEventListener("selectionchange", () => {
+  console.log(document.getSelection());
+});</script><script>window.MAIN_COLOR = "#f3b654"//"#af0808";
+      window.COLOR_CONFIG = {
+        c0: colorLuminance(window.MAIN_COLOR, -0.8),
+        c1: colorLuminance(window.MAIN_COLOR, -0.15),
+        c2: window.MAIN_COLOR,
+        c3: colorLuminance(window.MAIN_COLOR, 0.15),
+        c4: colorLuminance(window.MAIN_COLOR, 0.8),
+        c5: colorLuminance(window.MAIN_COLOR, 0.9),
+      };
+      const cssText=document.documentElement.style.cssText
+      document.documentElement.style.cssText=cssText+resolveColor(window.COLOR_CONFIG)
+
+      function resolveColor(colorConfig){
+          var str=''
+          for(key in colorConfig){
+              str+=`--${key}:${colorConfig[key]}`
+          }
+          return str
+      }
+      function colorLuminance (hex, lum){
+        // validate hex string
+        hex = String(hex).replace(/[^0-9a-f]/gi, "");
+        if (hex.length < 6) {
+          hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+        }
+        lum = lum || 0;
+
+        // convert to decimal and change luminosity
+        let rgb = "#",
+          c,
+          i;
+        for (i = 0; i < 3; i++) {
+          c = parseInt(hex.substr(i * 2, 2), 16);
+          c = Math.round(Math.min(Math.max(0, c + c * lum), 255)).toString(16);
+          rgb += ("00" + c).substr(c.length);
+        }
+
+        return rgb;
+      };</script><script>var startTime = new Date().getTime();
       var endTime = 0;
       var app = document.getElementById("app");
       var gWrap = document.querySelector(".g-wrap");
@@ -350,4 +350,4 @@
         observer.observe(app, config);
       });
       window.addEventListener("DOMContentLoaded", documentLoadHandler);
-      window.addEventListener("load", () => {});</script><script src="./vendors~index-bundle.js"></script><script src="./index-bundle.js"></script></body></html>
+      window.addEventListener("load", () => {});</script><script src="https://cdn.bootcdn.net/ajax/libs/echarts/5.1.2/echarts.js"></script><script src="./vendors~index-bundle.js"></script><script src="./index-bundle.js"></script></body></html>

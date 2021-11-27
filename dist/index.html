@@ -276,7 +276,7 @@
       function resolveColor(colorConfig){
           var str=''
           for(key in colorConfig){
-              str+=`--${key}:${colorConfig[key]}`
+              str+=`--${key}:${colorConfig[key]};`
           }
           return str
       }

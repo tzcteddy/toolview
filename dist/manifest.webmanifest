@@ -1,0 +1,16 @@
+{
+  "name": "toolkit",
+  "short_name": "tool",
+  "description": "toolkit是前端开发,全栈开发,工程化的常用工具箱",
+  "icons": [
+    {
+      "src": "logo.svg",
+      "sizes": "32x32",
+      "type": "image/svg+xml"
+    }
+  ],
+  "start_url": "/index.html",
+  "display": "fullscreen",
+  "theme_color": "#B12A34",
+  "background_color": "#B12A34"
+}

@@ -350,4 +350,23 @@
         observer.observe(app, config);
       });
       window.addEventListener("DOMContentLoaded", documentLoadHandler);
-      window.addEventListener("load", () => {});</script><script src="./vendors~index-bundle.js"></script><script src="./index-bundle.js"></script></body></html>
+      window.addEventListener("load", () => {});
+      // if('serviceWorker' in navigator) {
+      //   navigator.serviceWorker.register('./sw.js?'+Date.now()).then((registration) => {
+      //     Notification.requestPermission()
+      //       .then(status => {
+      //         if (status === 'granted') {
+      //           // registration.showNotification('title')
+      //         }
+      //       })
+      //   });
+      //   navigator.serviceWorker.addEventListener('controllerchange', function (ev) {
+      //     // console.log('%csw改变','background:#000;color:#fff')
+      //     // var options = {
+      //     //     body: '测试内容',
+      //     //     icon: 'https://images.gitee.com/uploads/images/2022/0415/133442_083a9916_8031453.png'
+      //     // }
+      //     // new Notification('测试title', options)
+      //     // window.location.reload()
+      //   });
+      // };</script><script src="./vendors~index-bundle.js"></script><script src="./index-bundle.js"></script></body></html>

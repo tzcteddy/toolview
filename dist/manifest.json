@@ -5,10 +5,11 @@
   "icons": [
     {
       "src": "logo.svg",
-      "sizes": "32x32",
+      "sizes": "450x450",
       "type": "image/svg+xml"
     }
   ],
+  "id":"/index.html",
   "start_url": "/index.html",
   "display": "fullscreen",
   "theme_color": "#B12A34",
@@ -17,16 +18,8 @@
   "gcm_sender_id": "103953800507",
   "related_applications": [
     {
-      "platform": "play",
-      "id": "com.alibaba.intl.android.apps.poseidon"
-    },
-    {
-      "platform": "play",
-      "id": "com.alibaba.intl.android.apps.twa"
-    },
-    {
       "platform": "webapp",
-      "url": "https://m.alibaba.com/manifest-pwa.json"
+      "url": "http://localhost:3000/manifest.webmanifest"
     }
   ]
 }

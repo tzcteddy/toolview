@@ -1,8 +1,4 @@
-<!DOCTYPE html><html lang="en" style="font-size: 72px;
-    --white: #ffffff;
-    --black: #000000;
-    --white-shadow:#d9d9d9;
-    --bg:#efefef;"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><meta name="viewport" content="width=device-width,user-scalable=no,initial-scale=1,maximum-scale=1,minimum-scale=1"><meta name="keywords" content="前端开发, 前端开发工具, 开发工具, 工程化,工程化工具, js, node, css, 在线工具,vscode, 插件"><meta name="description" content="toolkit是前端开发,全栈开发,工程化的常用工具箱"><title>toolkit工具</title><link rel="preload" href="https://images.gitee.com"><link rel="preload" href="https://foruda.gitee.com"><link rel="icon" href="https://images.gitee.com/uploads/images/2022/0415/133442_083a9916_8031453.png"><link rel="manifest" href="manifest.webmanifest"><link rel="manifest" href="manifest.json"><script>(function (win, lib) {
+<!DOCTYPE html><html lang="en" style="font-size: 72px; --white: #ffffff; --black: #000000; --white-shadow: #d9d9d9; --bg: #efefef"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><meta name="viewport" content="width=device-width,user-scalable=no,initial-scale=1,maximum-scale=1,minimum-scale=1"><meta name="keywords" content="前端开发, 前端开发工具, 开发工具, 工程化,工程化工具, js, node, css, 在线工具,vscode, 插件"><meta name="description" content="toolkit是前端开发,全栈开发,工程化的常用工具箱"><title>toolkit工具</title><link rel="preload" href="https://images.gitee.com"><link rel="preload" href="https://foruda.gitee.com"><link rel="icon" href="https://images.gitee.com/uploads/images/2022/0415/133442_083a9916_8031453.png"><link rel="manifest" href="manifest.webmanifest"><link rel="manifest" href="manifest.json"><script>(function (win, lib) {
         var doc = win.document;
         var docEl = doc.documentElement;
         var metaEl = doc.querySelector('meta[name="viewport"]');
@@ -14,9 +10,7 @@
 
         if (metaEl) {
           console.warn("将根据已有的meta标签来设置缩放比例");
-          var match = metaEl
-            .getAttribute("content")
-            .match(/initial-scale=([d.]+)/);
+          var match = metaEl.getAttribute("content").match(/initial-scale=([d.]+)/);
           if (match) {
             scale = parseFloat(match[1]);
             dpr = parseInt(1 / scale);
@@ -63,13 +57,7 @@
           metaEl.setAttribute("name", "viewport");
           metaEl.setAttribute(
             "content",
-            "initial-scale=" +
-              scale +
-              ", maximum-scale=" +
-              scale +
-              ", minimum-scale=" +
-              scale +
-              ", user-scalable=no"
+            "initial-scale=" + scale + ", maximum-scale=" + scale + ", minimum-scale=" + scale + ", user-scalable=no"
           );
           if (docEl.firstElementChild) {
             docEl.firstElementChild.appendChild(metaEl);
@@ -247,21 +235,21 @@
             transform: translate(1vw, 0) scale(1);
           }
         }</style><div class="g-loading"><div class="g-container"><div class="g-first"></div><div class="g-ball"></div><div class="g-ball"></div><div class="g-ball"></div><div class="g-ball"></div><div class="g-ball"></div><div class="g-ball"></div><div class="g-ball"></div></div></div></div><script>console.table({
-        visibilityState:'状态 hidden visible 对应事件：visibilitychange',
-        characterSet:'只读属性返回当前文档的字符编码',
-        designMode :" 控制整个文档是否可编辑。有效值为 'on' 和 'off' ",
-        readyState :'描述了document 的加载状态。 对应事件：readystatechange',
-        lastModified:"文档最后修改时间"
-      })
-      document.addEventListener('visibilitychange',()=>{
-        console.log(document.visibilityState)
-      })
-      document.addEventListener('online',()=>{
-        console.log(window.navigator.onLine)
-      })
+        visibilityState: "状态 hidden visible 对应事件：visibilitychange",
+        characterSet: "只读属性返回当前文档的字符编码",
+        designMode: " 控制整个文档是否可编辑。有效值为 'on' 和 'off' ",
+        readyState: "描述了document 的加载状态。 对应事件：readystatechange",
+        lastModified: "文档最后修改时间",
+      });
+      document.addEventListener("visibilitychange", () => {
+        console.log(document.visibilityState);
+      });
+      document.addEventListener("online", () => {
+        console.log(window.navigator.onLine);
+      });
       document.addEventListener("selectionchange", () => {
-  console.log(document.getSelection());
-});</script><script>window.MAIN_COLOR = '#970018'//'#0b2469'//"#f3b654"//"#af0808";
+        console.log(document.getSelection());
+      });</script><script>window.MAIN_COLOR = "#174747"; //'#970018'//'#0b2469'//"#f3b654"//"#af0808";
       window.COLOR_CONFIG = {
         c0: colorLuminance(window.MAIN_COLOR, -0.8),
         c1: colorLuminance(window.MAIN_COLOR, -0.15),
@@ -270,17 +258,17 @@
         c4: colorLuminance(window.MAIN_COLOR, 0.8),
         c5: colorLuminance(window.MAIN_COLOR, 0.9),
       };
-      const cssText=document.documentElement.style.cssText
-      document.documentElement.style.cssText=cssText+resolveColor(window.COLOR_CONFIG)
+      const cssText = document.documentElement.style.cssText;
+      document.documentElement.style.cssText = cssText + resolveColor(window.COLOR_CONFIG);
 
-      function resolveColor(colorConfig){
-          var str=''
-          for(key in colorConfig){
-              str+=`--${key}:${colorConfig[key]};`
-          }
-          return str
+      function resolveColor(colorConfig) {
+        var str = "";
+        for (key in colorConfig) {
+          str += `--${key}:${colorConfig[key]};`;
+        }
+        return str;
       }
-      function colorLuminance (hex, lum){
+      function colorLuminance(hex, lum) {
         // validate hex string
         hex = String(hex).replace(/[^0-9a-f]/gi, "");
         if (hex.length < 6) {
@@ -299,7 +287,7 @@
         }
 
         return rgb;
-      };</script><script>var startTime = new Date().getTime();
+      }</script><script>var startTime = new Date().getTime();
       var endTime = 0;
       var app = document.getElementById("app");
       var gWrap = document.querySelector(".g-wrap");

@@ -1,6 +1,6 @@
 import { renderers } from './renderers.mjs';
 import { c as createExports, s as serverEntrypointModule } from './chunks/_@astrojs-ssr-adapter_CUGViMED.mjs';
-import { manifest } from './manifest_BXm0FCi5.mjs';
+import { manifest } from './manifest_DGIiPxJO.mjs';
 
 const serverIslandMap = new Map();;
 
@@ -28,7 +28,7 @@ const _args = {
     "server": "file:///Users/xdf/dev/person/toolkit/packages/toolkit-online/dist/server/",
     "host": false,
     "port": 4321,
-    "assets": "astro-static",
+    "assets": "astro",
     "experimentalStaticHeaders": false
 };
 const _exports = createExports(_manifest, _args);

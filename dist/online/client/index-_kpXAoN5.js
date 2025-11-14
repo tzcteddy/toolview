@@ -1,2 +1,0 @@
-const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["chunks/index-ZagXIg7H.js","chunks/_plugin-vue_export-helper-DlAUqK2U.js","chunks/runtime-core.esm-bundler-PIa3_iml.js"])))=>i.map(i=>d[i]);
-import{_ as o}from"./chunks/preload-helper-BS46-MCq.js";import{d as e}from"./chunks/runtime-core.esm-bundler-PIa3_iml.js";const d=e({loader:()=>o(()=>import("./chunks/index-ZagXIg7H.js"),__vite__mapDeps([0,1,2])),loadingComponent:{template:"加载中..."},delay:500});export{d as default};

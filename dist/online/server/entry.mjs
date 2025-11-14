@@ -1,6 +1,6 @@
 import { renderers } from './renderers.mjs';
-import { c as createExports, s as serverEntrypointModule } from './chunks/_@astrojs-ssr-adapter-UeTTWE1p.js';
-import { manifest } from './manifest_CzxWzCv2.mjs';
+import { c as createExports, s as serverEntrypointModule } from './chunks/_@astrojs-ssr-adapter_BuczJvQv.mjs';
+import { manifest } from './manifest_DHDikOKH.mjs';
 
 const serverIslandMap = new Map();;
 
@@ -28,7 +28,7 @@ const _args = {
     "server": "file:///Users/xdf/dev/person/toolkit/packages/toolkit-online/dist/server/",
     "host": false,
     "port": 4321,
-    "assets": "assets",
+    "assets": "astro-static",
     "experimentalStaticHeaders": false
 };
 const _exports = createExports(_manifest, _args);

@@ -12,7 +12,7 @@ const ACTION_QUERY_PARAMS$1 = {
   actionName: "_action"};
 const ACTION_RPC_ROUTE_PATTERN = "/_actions/[...path]";
 
-const __vite_import_meta_env__ = {"ASSETS_PREFIX": undefined, "BASE_URL": "/toolview/dist/online/client/", "DEV": false, "MODE": "production", "PROD": true, "PUBLIC_VITE_BASE": "", "PUBLIC_VITE_COZE_ACCESS_TOKEN": "pat_C8gVAwPM92ZdU5DEkrqobXXDifdQyifEjiVH7hr33Qef7neCPvflMJAeG1I5fbHf", "PUBLIC_VITE_COZE_BOT_ID": "7559467731763511311", "PUBLIC_VITE_GITEE_TOKEN": "11a3fd9a381d019f6c7c586cbc0048d3", "SITE": undefined, "SSR": true};
+const __vite_import_meta_env__ = {"ASSETS_PREFIX": undefined, "BASE_URL": "/toolview/dist/online/client/", "DEV": false, "MODE": "production", "PROD": true, "PUBLIC_VITE_BASE": "/toolview/dist/online/client", "PUBLIC_VITE_COZE_ACCESS_TOKEN": "pat_C8gVAwPM92ZdU5DEkrqobXXDifdQyifEjiVH7hr33Qef7neCPvflMJAeG1I5fbHf", "PUBLIC_VITE_COZE_BOT_ID": "7559467731763511311", "PUBLIC_VITE_GITEE_TOKEN": "11a3fd9a381d019f6c7c586cbc0048d3", "SITE": undefined, "SSR": true};
 const ACTION_QUERY_PARAMS = ACTION_QUERY_PARAMS$1;
 const codeToStatusMap = {
   // Implemented from IANA HTTP Status Code Registry

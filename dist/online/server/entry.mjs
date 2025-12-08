@@ -1,6 +1,6 @@
 import { renderers } from './renderers.mjs';
 import { c as createExports, s as serverEntrypointModule } from './chunks/_@astrojs-ssr-adapter_DbvxVVzX.mjs';
-import { manifest } from './manifest_OX2PTufc.mjs';
+import { manifest } from './manifest_DSjUDgJB.mjs';
 
 const serverIslandMap = new Map();;
 
@@ -13,7 +13,7 @@ const _page5 = () => import('./pages/wechat/detail/_title_.astro.mjs');
 const _page6 = () => import('./pages/wechat.astro.mjs');
 const _page7 = () => import('./pages/index.astro.mjs');
 const pageMap = new Map([
-    ["src/pages/bg.astro", _page0],
+    ["src/pages/bg/index.astro", _page0],
     ["src/pages/dev/index.astro", _page1],
     ["src/pages/index1.astro", _page2],
     ["src/pages/open-source/index.astro", _page3],

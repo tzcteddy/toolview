@@ -1,0 +1,2 @@
+const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["astro/index.D64p717R.js","astro/_plugin-vue_export-helper.DlAUqK2U.js","astro/runtime-core.esm-bundler.DhUPWayv.js","astro/index.Dt2H7cBh.css"])))=>i.map(i=>d[i]);
+import{_ as e}from"./preload-helper.BS46-MCq.js";import{e as o}from"./runtime-core.esm-bundler.DhUPWayv.js";const n=o({loader:()=>e(()=>import("./index.D64p717R.js"),__vite__mapDeps([0,1,2,3])),loadingComponent:{template:"加载中..."},delay:500});export{n as default};

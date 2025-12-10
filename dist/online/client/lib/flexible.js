@@ -74,8 +74,8 @@
             width = 540 * dpr;
           }
           var rem = width / 7.5;
-          docEl.style.fontSize = rem + "px";
-          flexible.rem = win.rem = rem;
+          docEl.style.fontSize = Math.min(rem) + "px";
+          flexible.rem = win.rem = Math.min(rem);
         }
 
         win.addEventListener(

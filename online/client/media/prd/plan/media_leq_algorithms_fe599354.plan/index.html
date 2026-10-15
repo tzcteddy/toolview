@@ -1,0 +1,141 @@
+<!DOCTYPE html><meta charset="utf-8"><h1 id="监控页-lp--leqprd3">监控页 Lp / Leq（prd3）</h1>
+<p>对照 <a href="packages/toolkit-online/src/pages/media/prd3.md">prd3.md</a> 全文（含 3.1–3.6、第 4–7 节）。只改 <code>pages/media/</code>，<strong>不改</strong>侧栏/主题。V1/V2 能力全部保留：单 Canvas、摄像头/录屏、OSD、表盘、齿轮弹窗、原有功能/UI 滑块、权限与 resize。</p>
+<h2 id="和上一版-plan-对齐的需求要点">和上一版 plan 对齐的需求要点</h2>
+<ul>
+<li><strong>底层始终并行算 Lp + Leq</strong>，勾选只控制「画不画 / 显不显」，不算不算。取消再勾选 Leq 时立刻有数据。</li>
+<li><strong>表盘大数字和红指针永远跟 Lp</strong>，即使只勾选了 Leq。</li>
+<li>多选只影响：<strong>波形曲线、图例、Leq 统计行</strong>。Lmin / Avg / Lmax 始终基于 Lp，一直显示。</li>
+<li>全取消算法 → <strong>强制勾回 Lp</strong>（不能空）。</li>
+<li>链路按 3.5：<code>麦克风 → AnalyserNode → A 计权 → 时间加权 → 底噪补偿与平滑</code>，再分叉 Lp / Leq。</li>
+<li>Leq 是 <strong>声能量积分</strong>（<code>10*log10(mean(10^(L/10)))</code> 或等价均方能量），不是 Lp 算术平均；短突发会抬高，消失后缓慢回落，不会瞬间归位。</li>
+<li>图例 Canvas 内右上，文案按 PRD：<code>Lp瞬时</code>、<code>Leq等效Leq</code>；未勾选的曲线和图例一起消失。</li>
+<li>统计文案改为 <code>最小(Lmin)</code> / <code>平均(Avg)</code> / <code>最大(Lmax)</code>；勾选 Leq 时多一行 <code>Leq：XX dB</code>。</li>
+<li>弹窗底部加 3.6 提示；画布底部原有「非专业声级计」备注保留。</li>
+<li>响应速度三档对应声级计 <strong>Fast / 自定义 / Slow</strong>（标签 快/中/慢）。</li>
+<li>开麦初期校准 UI 必须显示「校准中…」，完成后再出数。</li>
+<li>AudioContext 挂起要 <strong>提示用户</strong>，不是只 <code>resume()</code>。</li>
+<li>Safari 无 A 计权滤波时降级优化 RMS，<strong>Lp 与 Leq 仍要能算</strong>。</li>
+</ul>
+<h2 id="配置">配置</h2>
+<p><a href="packages/toolkit-online/src/pages/media/lib/settings.ts">settings.ts</a> 沿用 <code>toolkit-media-settings</code>，旧缓存缺字段补默认：</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>字段</th><th>出厂</th><th>范围</th></tr></thead><tbody><tr><td><code>showLp</code></td><td>true</td><td>与 <code>showLeq</code> 至少一个为 true</td></tr><tr><td><code>showLeq</code></td><td>true</td><td>全 false 时强制 <code>showLp=true</code></td></tr><tr><td><code>leqWindow</code></td><td>10</td><td>5–60 秒</td></tr><tr><td><code>responseSpeed</code></td><td>0</td><td>0 Fast 125ms / 1 自定义 250ms / 2 Slow 1000ms</td></tr><tr><td><code>noiseFloorTrack</code></td><td>true</td><td>布尔</td></tr></tbody></table>
+<p>原有 <code>videoEnable</code>、<code>micEnable</code>、<code>gaugeScale</code>、<code>timeFontSize</code>、<code>waveDuration</code> 不变。重置：全部恢复出厂，并清空 Leq 能量窗 + Leq 波形（Lp 统计一并按现有重置逻辑清会话）。</p>
+<p><code>waveDuration</code>（5–30s）只裁 <strong>两条曲线的 X 轴历史</strong>；<code>leqWindow</code>（5–60s）只改 Leq 积分周期，二者独立。</p>
+<h2 id="音频audiometer">音频（AudioMeter）</h2>
+<p>重写 <a href="packages/toolkit-online/src/pages/media/lib/audio-meter.ts">audio-meter.ts</a>。<strong>无论勾选如何，tick 都更新 Lp 与 Leq。</strong></p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>MediaStreamSource → AnalyserNode(fftSize 2048)</span></span>
+<span class="line"><span>                 → A 计权（优先频率权曲线乘 FFT 能量；有 Biquad 时也可接在 Analyser 前，等价）</span></span>
+<span class="line"><span>                 → 均方时间加权（Fast/自定义/Slow）+ 少量平滑</span></span>
+<span class="line"><span>                 → 底噪补偿 → Lp（0–120）</span></span>
+<span class="line"><span>                 → 同一线性能量按 leqWindow 积分 → Leq（0–120，禁止负数）</span></span></code></pre>
+<p>实现约束（prd 7.1 / 7.2）：</p>
+<ul>
+<li>每帧只读 Analyser + O(fftSize) 权值累加 + O(1) 环形能量窗，不在主线程做重 FFT。</li>
+<li>A 计权滤波能放到 <code>BiquadFilterNode</code> 的就放音频图（音频线程）；不行则用频域 A 曲线；再不行降级 RMS（5.4）。</li>
+<li><code>createBiquadFilter</code> / <code>getFloatFrequencyData</code> 缺失走降级，Lp、Leq 仍输出。</li>
+</ul>
+<p>底噪：</p>
+<ul>
+<li><code>start()</code> / 再次开麦：约 1.5s 校准，<code>calibrating=true</code>，画布「校准中…」，此间不把 Lp 写成 0 充统计。</li>
+<li>校准目标：安静室内 Lp 落在 <strong>35–45</strong>（验收 6.1），不再 <code>(dBFS+60)*2</code> 那种低音量直接 0。</li>
+<li><code>noiseFloorTrack=true</code>：接近基线时缓慢跟踪；<code>false</code>：只用这次校准的固定基线。</li>
+</ul>
+<p>Leq：</p>
+<ul>
+<li>对 A 计权后的线性能量（或 <code>10^(Lp_raw/10)</code>）做窗口平均，再换成显示 dB，与 Lp <strong>同一校准偏移</strong>，便于和 35–45 对齐。</li>
+<li>改 <code>leqWindow</code>：只清 Leq 能量队列和 Leq 波形，<strong>不动 Lp 波形与 Lmin/Avg/Lmax</strong>。</li>
+<li>响应速度只改 Lp 时间常数，<strong>Leq 不吃这个参数</strong>（验收 6.6）。</li>
+</ul>
+<p>关麦：<code>setActive(false)</code>，曲线贴基线平线，统计冻结（含 Leq 文本若在展示）。</p>
+<p><code>AudioContext</code> suspended：<code>resume()</code>，失败把错误写到现有画布错误条（3.5.3）。</p>
+<p><code>MeterSnapshot</code>：<code>db</code>(Lp)、<code>leq</code>、<code>min</code>、<code>max</code>、<code>avg</code>、<code>calibrating</code>；<code>getWaveform()</code> 与 <code>getLeqWaveform()</code> 两条缓冲。</p>
+<h2 id="设置弹窗">设置弹窗</h2>
+<p><a href="packages/toolkit-online/src/pages/media/components/MediaSettings.vue">MediaSettings.vue</a> 新项只放在【UI配置】原滑块下面，功能配置不动：</p>
+<ul>
+<li>复选：Lp瞬时分贝、Leq等效连续噪声；全取消 → patch 强制 <code>showLp</code></li>
+<li>滑块：Leq 积分窗口 5–60s，显示当前秒数；<code>!showLeq</code> 时 <code>disabled</code> + 置灰</li>
+<li>滑块：响应速度 0–2，旁注 快 / 中 / 慢</li>
+<li>开关：底噪自动跟踪</li>
+<li>弹窗底部（分组外、按钮上方或页脚上）固定文案：
+「提示：本页面基于浏览器麦克风模拟声级计，非专业声学计量仪器，测量结果仅供参考。」</li>
+</ul>
+<p>全部即时生效，不关采集、不关 rAF。</p>
+<h2 id="canvas">Canvas</h2>
+<p><a href="packages/toolkit-online/src/pages/media/lib/renderer.ts">renderer.ts</a> + <a href="packages/toolkit-online/src/pages/media/components/MediaMonitor.vue">MediaMonitor.vue</a>：</p>
+<ul>
+<li>指针与大数字：<code>meter.db</code>（Lp），与 <code>showLp</code> 无关</li>
+<li>统计三行始终：<code>最小(Lmin)</code> <code>平均(Avg)</code> <code>最大(Lmax)</code></li>
+<li><code>showLeq</code> 时第四行 <code>Leq：XX dB</code>，否则不画</li>
+<li><code>calibrating</code>：表盘附近「校准中…」，校准完再出稳定数字</li>
+<li>同一波形区、X=波形时长、Y=0–120：
+<ul>
+<li><code>showLp</code>：红线 + 淡红填充（旧视觉）</li>
+<li><code>showLeq</code>：蓝线 + 淡蓝填充，叠在同一图</li>
+<li>只勾一项：只画一条 + 一项图例（3.4.5）</li>
+</ul>
+</li>
+<li>图例在波形框 <strong>内部右上</strong>（Canvas，非 DOM）：色块 + <code>Lp瞬时</code> / <code>Leq等效Leq</code></li>
+<li>关麦：当前勾选的曲线都贴 0 平线 +「麦克风已关闭」</li>
+<li>画布底栏原备注保留</li>
+</ul>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="mermaid"><code><span class="line"><span style="color:#E1E4E8">flowchart TB</span></span>
+<span class="line"><span style="color:#E1E4E8">  mic[MicStream] --> analyser[AnalyserNode]</span></span>
+<span class="line"><span style="color:#E1E4E8">  analyser --> aweight[AWeight]</span></span>
+<span class="line"><span style="color:#E1E4E8">  aweight --> tau[TimeWeight_FastMidSlow]</span></span>
+<span class="line"><span style="color:#E1E4E8">  tau --> floor[NoiseFloor_and_smooth]</span></span>
+<span class="line"><span style="color:#E1E4E8">  floor --> lp[Lp]</span></span>
+<span class="line"><span style="color:#E1E4E8">  floor --> leq[LeqEnergyWindow]</span></span>
+<span class="line"><span style="color:#E1E4E8">  lp --> gauge[GaugeAlways]</span></span>
+<span class="line"><span style="color:#E1E4E8">  lp --> stats[LminAvgLmax]</span></span>
+<span class="line"><span style="color:#E1E4E8">  lp --> redWave[RedWave_if_showLp]</span></span>
+<span class="line"><span style="color:#E1E4E8">  leq --> leqText[LeqStat_if_showLeq]</span></span>
+<span class="line"><span style="color:#E1E4E8">  leq --> blueWave[BlueWave_if_showLeq]</span></span></code></pre>
+<h2 id="测试prd3-第-6-节">测试（prd3 第 6 节）</h2>
+<p>chrome-devtools <code>/media</code>（有麦用真麦，否则 mock 流 + 可调增益）：</p>
+<ol>
+<li>开麦出现「校准中…」，结束后安静环境 Lp 约 35–45，不再贴 0；Leq 缓缓靠拢</li>
+<li>短突发：Lp 冲高，Leq 慢抬；声停后 Leq 慢回，不瞬间掉回</li>
+<li>取消 Leq：蓝线、<code>Leq等效Leq</code> 图例、<code>Leq：</code> 文本消失，只留红 Lp</li>
+<li>再勾选 Leq：蓝线、图例、统计恢复</li>
+<li>只留 Leq：只有蓝线+蓝图例，表盘仍跟 Lp；Leq 窗口滑块可用。取消 Leq 后滑块置灰</li>
+<li>改 Leq 窗口：蓝线重积、快慢明显变；红线与 Lmin/Avg/Lmax 不被清空</li>
+<li>改响应速度：红线阻尼变，Leq 不明显跟</li>
+<li>全取消算法 → Lp 被强制勾回</li>
+<li>关麦：平线、统计停；重置：Lp+Leq 都勾、窗口 10、响应快、底噪跟踪开</li>
+<li>视频开关、录屏/摄像头、齿轮、resize、侧栏「监控」不回归</li>
+</ol>

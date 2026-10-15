@@ -1,0 +1,80 @@
+<!DOCTYPE html><meta charset="utf-8"><h1 id="监控页设置弹窗prd2">监控页设置弹窗（prd2）</h1>
+<p>在现有 <a href="packages/toolkit-online/src/pages/media">packages/toolkit-online/src/pages/media</a> 上迭代，<strong>保留</strong>单 Canvas 采集/OSD/表盘/波形/源切换。设置入口和弹窗是 <strong>DOM</strong>（prd2 明确不画进 canvas）。配置只放 <code>pages/media/</code>，不改侧栏/主题公共组件。</p>
+<h2 id="配置状态">配置状态</h2>
+<p>新增 <a href="packages/toolkit-online/src/pages/media/lib/settings.ts">pages/media/lib/settings.ts</a>：</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="json"><code><span class="line"><span style="color:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#79B8FF">  "videoEnable"</span><span style="color:#E1E4E8">: </span><span style="color:#79B8FF">true</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#79B8FF">  "micEnable"</span><span style="color:#E1E4E8">: </span><span style="color:#79B8FF">true</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#79B8FF">  "gaugeScale"</span><span style="color:#E1E4E8">: </span><span style="color:#79B8FF">100</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#79B8FF">  "timeFontSize"</span><span style="color:#E1E4E8">: </span><span style="color:#79B8FF">16</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#79B8FF">  "waveDuration"</span><span style="color:#E1E4E8">: </span><span style="color:#79B8FF">15</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span></code></pre>
+<ul>
+<li><code>localStorage</code> key：<code>toolkit-media-settings</code>；读入时校验范围（gauge 30–100、字号 12–36、波形 5–30）</li>
+<li>「重置默认值」写回上述默认并立刻重绘、清空波形缓存</li>
+<li>「关闭」只关弹窗，当前值已实时写入 storage</li>
+</ul>
+<h2 id="设置-uidom">设置 UI（DOM）</h2>
+<p>在 <a href="packages/toolkit-online/src/pages/media/components/MediaMonitor.vue">MediaMonitor.vue</a> 上叠加，或拆 <a href="packages/toolkit-online/src/pages/media/components/MediaSettings.vue">MediaSettings.vue</a>：</p>
+<ul>
+<li>右下角固定齿轮按钮（<code>@iconify/vue</code>，如 <code>material-symbols:settings-outline</code>）：半透明底、hover 高亮，<code>z-index</code> 高于 canvas</li>
+<li>为避免挡住 canvas「摄像头/录屏」，画布源按钮左移约 56px（<a href="packages/toolkit-online/src/pages/media/lib/renderer.ts">renderer.ts</a>）</li>
+<li>弹窗：遮罩 + 白底圆角「参数配置」；分组【功能配置】【UI配置】；行内 label + 控件；小屏 <code>max-height</code> + 内容滚动</li>
+<li>开关/滑块用原生 <code>input[type=checkbox]</code> / <code>range</code>，样式贴合站点 <code>--primary</code> / <code>--danger</code>，不引入新 UI 库</li>
+<li>关闭：再点齿轮 / 点遮罩 / 「关闭」</li>
+<li><strong>打开弹窗时 rAF 与媒体流不停</strong></li>
+<li>轻量 toast（DOM）：翻转失败、录屏下关视频开关</li>
+</ul>
+<p>功能配置：</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>项</th><th>行为</th></tr></thead><tbody><tr><td>开启视频画面</td><td>仅控制<strong>摄像头</strong>是否 <code>drawImage</code>；关 → 纯黑底。当前源是录屏时开关无效，toast「当前背景源为屏幕共享，视频开关不生效」</td></tr><tr><td>开启麦克风</td><td>不释放权限；关 → <code>AudioMeter</code> 暂停采样，指针 0、波形平线、画布字「麦克风已关闭」；开 → 原流恢复 tick</td></tr><tr><td>翻转摄像头</td><td><code>isMobileDevice()</code> 才显示；<code>facingMode</code> <code>user</code>/<code>environment</code> 互换；失败 toast「无法切换摄像头，设备不支持」，画面不变</td></tr></tbody></table>
+<p>UI 配置（拖滑条即生效）：</p>
+<ul>
+<li>仪表盘大小：<code>gaugeR *= gaugeScale/100</code></li>
+<li>字体大小：OSD 时间用 <code>timeFontSize</code>（白字+阴影不变）</li>
+<li>波形时长：<code>AudioMeter.setWindowMs(n * 1000)</code> 并 <strong>清空</strong> 旧波形</li>
+</ul>
+<h2 id="采集--绘制接线">采集 / 绘制接线</h2>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="mermaid"><code><span class="line"><span style="color:#E1E4E8">flowchart LR</span></span>
+<span class="line"><span style="color:#E1E4E8">  gear[GearDOM] --> modal[SettingsModal]</span></span>
+<span class="line"><span style="color:#E1E4E8">  modal --> cfg[SettingsState]</span></span>
+<span class="line"><span style="color:#E1E4E8">  cfg --> ls[localStorage]</span></span>
+<span class="line"><span style="color:#E1E4E8">  cfg --> raf[rAF_renderMonitor]</span></span>
+<span class="line"><span style="color:#E1E4E8">  cfg --> meter[AudioMeter]</span></span>
+<span class="line"><span style="color:#E1E4E8">  flip[FlipCamera] --> perm[permissions.facingMode]</span></span></code></pre>
+<ul>
+<li><a href="packages/toolkit-online/src/pages/media/lib/permissions.ts">permissions.ts</a>：<code>requestCamera(facingMode)</code>；翻转只换视频轨，麦克风流保持</li>
+<li><a href="packages/toolkit-online/src/pages/media/lib/audio-meter.ts">audio-meter.ts</a>：<code>windowMs</code> 可设、<code>setActive(false)</code> 时 tick 返回 0 且不写 wave/统计</li>
+<li><a href="packages/toolkit-online/src/pages/media/lib/renderer.ts">renderer.ts</a>：<code>RenderState</code> 增加 <code>videoEnable</code>、<code>micEnable</code>、<code>gaugeScale</code>、<code>timeFontSize</code>、<code>waveDuration</code>；<code>hasVideo</code> 在 camera + <code>!videoEnable</code> 时为 false</li>
+</ul>
+<h2 id="测试">测试</h2>
+<p><code>toolkit-online</code> dev + chrome-devtools <code>/media</code>：</p>
+<ul>
+<li>齿轮打开/关闭弹窗，底层时间与波形仍在走</li>
+<li>关视频：摄像头源变黑底；录屏源时 toast 且画面仍在</li>
+<li>关麦克风：指针 0、平线、「麦克风已关闭」；再开恢复</li>
+<li>三滑块实时变；改波形时长后曲线清空再涨</li>
+<li>重置恢复默认；刷新后 localStorage 配置仍在</li>
+<li>emulate 窄屏/touch：出现翻转按钮；PC 无此按钮</li>
+<li>源切换、resize、侧栏「监控」不回归</li>
+</ul>

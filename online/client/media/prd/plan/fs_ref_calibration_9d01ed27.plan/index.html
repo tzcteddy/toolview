@@ -1,0 +1,42 @@
+<!DOCTYPE html><meta charset="utf-8"><h1 id="满幅校准滑块">满幅校准滑块</h1>
+<p>按前面沟通：用户用滑块调节 <code>0 dBFS</code> 对应多少分贝，对表后这台设备读数才有日常参考意义。不改侧栏/主题，不恢复「锁到 40」。</p>
+<h2 id="行为">行为</h2>
+<ul>
+<li>显示：<code>Lp = 10·log10(ms) + fsRef + trim + drift</code></li>
+<li><code>fsRef</code> 出厂 <strong>100</strong>（安静室内大约回到 35–45，消掉现在相对旧版多出的约 20 dB）</li>
+<li>范围 <strong>90–120</strong>，步进 1；即时生效，Lp / Leq / dBC / 原始共用</li>
+<li>重置默认值：<code>fsRef=100</code></li>
+<li><strong>底噪跟踪</strong>、<strong>1.5s 校准中</strong> 职责不变（跟踪不瞄 40；校准中只稳定滤波器）</li>
+</ul>
+<h2 id="改动">改动</h2>
+<p>只动 <code>packages/toolkit-online/src/pages/media/</code>。</p>
+<h3 id="1-配置">1. 配置</h3>
+<p><a href="packages/toolkit-online/src/pages/media/lib/settings.ts">settings.ts</a>：</p>
+<ul>
+<li>增加 <code>fsRef: number</code></li>
+<li><code>DEFAULT</code> = 100</li>
+<li><code>SETTINGS_RANGE.fsRef = { min: 90, max: 120 }</code></li>
+<li><code>normalize</code>：缺字段用 100，并 clamp</li>
+</ul>
+<h3 id="2-表计">2. 表计</h3>
+<p><a href="packages/toolkit-online/src/pages/media/lib/audio-meter.ts">audio-meter.ts</a>：</p>
+<ul>
+<li>去掉写死 <code>FS_REF = 120</code></li>
+<li>增加 <code>setFsRef(n)</code>，<code>toDb()</code> 用当前 <code>fsRef</code></li>
+<li>默认 100，与设置同步</li>
+</ul>
+<h3 id="3-设置-ui沿用现有-row--range">3. 设置 UI（沿用现有 row + range）</h3>
+<p><a href="packages/toolkit-online/src/pages/media/components/MediaSettings.vue">MediaSettings.vue</a> 在「底噪自动跟踪」<strong>上方</strong>增加：</p>
+<ul>
+<li>标签：<code>满幅参考 {{ settings.fsRef }}dB</code></li>
+<li><code>input.range</code> min 90 max 120</li>
+<li>旁注：<code>数值越大同一环境读数越高；可用手持声级计对照后调节</code></li>
+</ul>
+<p><a href="packages/toolkit-online/src/pages/media/components/MediaMonitor.vue">MediaMonitor.vue</a>：<code>applyMeterFromSettings</code> / <code>onPatch</code> 里调用 <code>meter.setFsRef(settings.fsRef)</code>。可写 <code>canvas.dataset.fsRef</code> 方便验收。</p>
+<h2 id="验收">验收</h2>
+<p>chrome-devtools <code>/media</code>：</p>
+<ol>
+<li>出厂/重置：<code>fsRef=100</code>，安静读数明显低于现在的「120 刻度」（约低 20 dB）</li>
+<li>滑块拖到 120：同一信号升高约 20；拖到 90：再降</li>
+<li>A/C 差值、勾选规则、C 开关、底噪跟踪、齿轮/铺满不回归</li>
+</ol>

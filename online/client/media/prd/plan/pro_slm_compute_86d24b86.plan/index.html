@@ -1,0 +1,50 @@
+<!DOCTYPE html><meta charset="utf-8"><h1 id="专业噪声计算ui-不变">专业噪声计算（UI 不变）</h1>
+<p>对照上次评估里未达标项。目标是 <strong>IEC 61672 对齐的工程级 Web 声级计</strong>，不是法定 Class 1/2（浏览器拿不到 20 μPa 与每只麦的灵敏度）。UI / 布局 / 文案控件一律不改；只改采集与计算，以及出厂默认（底噪跟踪改为关）。</p>
+<p><strong>主动接受的观感变化</strong>：安静房间不再被拉到 35–45。同一物理环境在不同设备上读数仍会因麦灵敏度差几 dB，但相对变化、A/C 差值、Leq 积分会按标准走，不再被 AGC 和「校准到 40」抹平。</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="mermaid"><code><span class="line"><span style="color:#E1E4E8">flowchart TB</span></span>
+<span class="line"><span style="color:#E1E4E8">  gum[getUserMedia_rawAudio]</span></span>
+<span class="line"><span style="color:#E1E4E8">  gum --> ctx[AudioContext_48k]</span></span>
+<span class="line"><span style="color:#E1E4E8">  ctx --> essentia[essentia.js_WASM]</span></span>
+<span class="line"><span style="color:#E1E4E8">  essentia --> iir[IIR_or_Spectrum]</span></span>
+<span class="line"><span style="color:#E1E4E8">  iir --> weight[IEC_A_C_Z_weights]</span></span>
+<span class="line"><span style="color:#E1E4E8">  weight --> tw[TimeWeight_ms]</span></span>
+<span class="line"><span style="color:#E1E4E8">  tw --> leq[Leq_energy_dt]</span></span>
+<span class="line"><span style="color:#E1E4E8">  tw --> map[dBFS_plus_deviceTrim]</span></span></code></pre>
+<h2 id="策略按设备自己定">策略（按设备自己定）</h2>
+<ul>
+<li><strong>采集（PC/手机相同约束，失败再降级）</strong>：关闭 <code>echoCancellation</code> / <code>noiseSuppression</code> / <code>autoGainControl</code>，单声道，尽量 48 kHz。<code>OverconstrainedError</code> 时先丢掉 <code>sampleRate</code>，再退回 <code>audio: true</code>。</li>
+<li><strong>重计算只用一个第三方库：essentia.js</strong>（MTG/UPF，WASM）。窗函数、FFT/频谱、IIR 滤波全部走该库，禁止再手写 1024 点乘加或自研 FFT。本仓库只保留 IEC A/C 权曲线、时间加权、Leq 积分与 dB 映射。进入监控页再懒加载；Worklet 用官方 <code>essentia-wasm</code> 同步构建。WASM 失败才退 Analyser，降级路径仍用 essentia 对时域帧做 <code>Windowing</code> + <code>Spectrum</code>，能量 <code>Σ P·w</code>（不除以 <code>Σ w</code>）。帧长：PC 4096，手机 2048。许可为 AGPL-3.0，依赖写在 <code>packages/toolkit-online</code>。</li>
+<li><strong>主路径仍在 AudioWorklet</strong>：essentia <code>IIR</code> 吃 IEC 系数做 A/C，Z 为不计权。时间加权仍对应现有快/中/慢（125 / 250 / 1000 ms）。Leq 用 <code>Σ p²·Δt / T</code>，不用帧平均。</li>
+<li><strong>绝对刻度</strong>：<code>Lp = 10·log10(ms) + 120 + trim</code>（0 dBFS = 120 dB）。trim：桌面 <code>0</code>，iOS <code>-3</code>，Android <code>-6</code>。1.5 s「校准中」只做滤波器稳定，<strong>不再把环境映射到 40</strong>。</li>
+<li><strong>底噪跟踪</strong>：出厂改为关；打开时只做极慢的增益漂移补偿，<strong>不瞄准 40 dB</strong>。现有开关保留，不改 UI。</li>
+<li><strong>C 计权</strong>：公式按标准算，<strong>不在手机上虚增低频</strong>（会放大底噪、冒充冲击）。移动端默认仍关 C（现有逻辑）。手机麦 100 Hz 以下硬件缺口无法软件补齐。</li>
+<li><strong>不做</strong>：新校准 UI、过载新控件、改侧栏/主题、宣称计量认证。底部署名保持「仅作参考」。</li>
+</ul>
+<h2 id="改动范围">改动范围</h2>
+<p>只动 <code>packages/toolkit-online</code> 的 media 页、<code>public/media/</code>，以及该包对 <code>essentia.js</code> 的依赖。不改 Vue 模板结构。</p>
+<h3 id="1-原始音频采集">1. 原始音频采集</h3>
+<p><a href="packages/toolkit-online/src/pages/media/lib/permissions.ts">permissions.ts</a> 抽出 <code>rawAudioConstraints()</code>，<code>requestCameraAndMic</code> 的合并/单独麦请求都走它，带降级。</p>
+<h3 id="2-worklet--essentia-测量核">2. Worklet + essentia 测量核</h3>
+<p>新增 <a href="packages/toolkit-online/public/media/meter-processor.js">public/media/meter-processor.js</a>（<code>base</code> 为 <code>/toolview/online/client</code>，用 <code>import.meta.env.BASE_URL</code> 加载）。Worklet 内加载 essentia WASM。</p>
+<p>每块音频：essentia <code>IIR</code>（A/C）或 <code>Windowing</code>+<code>Spectrum</code> → IEC 权 → 均方时间加权 → 按 <code>leqWindowMs</code> 滑窗积分。主线程用 <code>MessagePort</code> 收最新 <code>msA/msC/msZ</code> 与能量和；C 关闭时跳过 C 路。</p>
+<h3 id="3-audiometer-接入与降级">3. AudioMeter 接入与降级</h3>
+<p>改 <a href="packages/toolkit-online/src/pages/media/lib/audio-meter.ts">audio-meter.ts</a>：</p>
+<ul>
+<li><code>start()</code>：懒加载 essentia，优先 <code>audioWorklet.addModule</code>；失败则 Analyser 取时域帧，仍交给 essentia 做频谱。</li>
+<li><code>tick()</code>：只做映射、钳位 0–120、波形/统计；rAF 不再手写 FFT 乘加。</li>
+<li>删除「P35 → 40 dB」和「向 40 爬」；<code>finishCalibration</code> 只置 <code>floorReady</code>。</li>
+<li><code>setCWeightEnabled</code> / <code>setLeqWindowMs</code> / <code>setResponseSpeed</code> 转发 Worklet。</li>
+</ul>
+<h3 id="4-设备-trim-与默认">4. 设备 trim 与默认</h3>
+<p>小表（UA：iPhone/iPad → ios，Android → android，其余 desktop）加到 <code>audio-meter.ts</code>。<br>
+<a href="packages/toolkit-online/src/pages/media/lib/settings.ts">settings.ts</a>：<code>noiseFloorTrack</code> 出厂 <code>false</code>，normalize 用 <code>=== true</code>（与 <code>enableCWeight</code> 一致）。重置即关跟踪。</p>
+<p><a href="packages/toolkit-online/src/pages/media/components/MediaMonitor.vue">MediaMonitor.vue</a> 仅随 <code>start()</code> 契约改调用，不改画面。</p>
+<h2 id="验收chrome-devtoolsui-截图像素级对照即可">验收（chrome-devtools，UI 截图像素级对照即可）</h2>
+<ol>
+<li>授权后 <code>getSettings()</code>：能关则 AGC/NS/AEC 为 false。</li>
+<li>1 kHz 类激励：dBA ≈ dBC；模拟低频（降采样或低频振荡）dBC <strong>明显高于</strong> dBA（修复除 <code>Σw</code> 后差值应拉开）。</li>
+<li>安静环境：读数稳定，<strong>不</strong>被锁在 40；关跟踪后 offset 不再爬。</li>
+<li>开/关 C、重置、波形勾选规则、右侧铺满、齿轮/摄像头/录屏：行为与现 UI 一致。</li>
+<li>模拟移动 UA：C 默认关；essentia/Worklet 失败时帧长 2048 且页面不挂。</li>
+<li>控制台/网络可见 essentia WASM 已加载；分贝路径不依赖手写 FFT。</li>
+</ol>

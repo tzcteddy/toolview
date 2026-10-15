@@ -1,0 +1,73 @@
+<!DOCTYPE html><meta charset="utf-8"><h1 id="监控页-c-计权prd4">监控页 C 计权（prd4）</h1>
+<p>对照 <a href="packages/toolkit-online/src/pages/media/prd4.md">prd4.md</a>。只改 <code>pages/media/</code>，<strong>不改</strong>侧栏/主题。V1–V3 全保留：关 C 计权后计算与画面必须和现在完全一样。</p>
+<h2 id="和-v3-的对齐">和 V3 的对齐</h2>
+<ul>
+<li><strong>默认只开 A 计权</strong>：<code>enableCWeight=false</code>。此时不建 C 权值、不累积 Leq(C)、不画 C/原始曲线，CPU 与 V3 相同。</li>
+<li>V3 的 <code>showLp</code> / <code>showLeq</code> 仍只管 <strong>A 路展示</strong>（红 LpA、蓝 Leq(A)），全取消仍强制勾回 Lp。</li>
+<li>「选项下拉」落到现有【UI配置】复选/开关，不新增异形下拉，避免换皮。</li>
+<li>表盘大数字和红指针仍跟 <strong>LpA</strong>（V3 不变）。C 开后统计区多一组 <strong>dBC</strong>。</li>
+</ul>
+<h2 id="配置">配置</h2>
+<p><a href="packages/toolkit-online/src/pages/media/lib/settings.ts">settings.ts</a> 仍用 <code>toolkit-media-settings</code>，缺字段补默认：</p>
+<ul>
+<li><code>enableCWeight</code>：出厂 <code>false</code></li>
+<li><code>showRaw</code>：出厂 <code>true</code>（仅 C 开启时生效）</li>
+<li><code>showLpC</code>：出厂 <code>true</code>（仅 C 开启时生效）</li>
+<li><code>showLeqC</code>：出厂 <code>true</code>（仅 C 开启时生效；与 <code>showLeq</code> 独立：Leq(A)/Leq(C) 可同时画）</li>
+<li>重置：全部出厂，并停 C 路、清 C 波形/能量窗</li>
+</ul>
+<h2 id="音频audiometer">音频（AudioMeter）</h2>
+<p>改 <a href="packages/toolkit-online/src/pages/media/lib/audio-meter.ts">audio-meter.ts</a>。主路径仍是一帧一次 <code>getFloatFrequencyData</code>（fft 2048），<strong>不要</strong>再开第二条 Analyser。</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>Analyser FFT</span></span>
+<span class="line"><span> ├─ 无计权能量 → 原始声压 LpZ（仅 enableCWeight）</span></span>
+<span class="line"><span> ├─ × A 曲线 → 时间加权 → 底噪 → LpA / Leq(A)   （始终，与 V3 相同）</span></span>
+<span class="line"><span> └─ × C 曲线 → 时间加权 → 同一偏移 → LpC / Leq(C) （仅 enableCWeight）</span></span></code></pre>
+<ul>
+<li>C 权：ISO 226 / IEC 61672 C 曲线（<code>cWeightDb(freq)</code>，与现有 <code>aWeightDb</code> 并列）；Biquad 缺失时仍走频域；再不行 RMS 降级，C 用同一 RMS 仅作占位（验收仍要有 dBC 数）。</li>
+<li><code>setCWeightEnabled(false)</code>：停 C 累加、丢 C 缓冲，下一帧不再乘 C 权。</li>
+<li>开启 C：用当前 A 校准 <code>offset</code>，不重新校准；LpC/Leq(C) 钳 0–120。</li>
+<li><code>MeterSnapshot</code> 增补：<code>dbC</code>、<code>leqC</code>、<code>dbRaw</code>（C 关时为 0 且 UI 不读）。</li>
+<li>缓冲：<code>getRawWaveform()</code> / <code>getLpCWaveform()</code> / <code>getLeqCWaveform()</code>；<code>waveDuration</code> 仍只裁 X 轴。</li>
+</ul>
+<h2 id="设置弹窗">设置弹窗</h2>
+<p><a href="packages/toolkit-online/src/pages/media/components/MediaSettings.vue">MediaSettings.vue</a> 新项放在【UI配置】噪声算法下面：</p>
+<ul>
+<li>开关：<strong>启用C计权并行测量</strong>（默认关）</li>
+<li>C 开后显示复选：<code>原始声压</code>、<code>LpC</code>、<code>Leq(C)</code>（与 LpA / Leq(A) 并列）；旁注「并行会增加少量计算」</li>
+<li>移动端（已有 <code>isMobile</code>）再加一行：算力消耗较大，可关闭 C 计权</li>
+<li>底部署名改为 prd4 文案：
+「A计权用于日常环境噪声评估；C计权适合冲击、低频噪声测量。本模拟结果仅作参考，非专业计量设备。」</li>
+<li>即时生效，不关采集、不关 rAF</li>
+</ul>
+<h2 id="canvas">Canvas</h2>
+<p><a href="packages/toolkit-online/src/pages/media/lib/renderer.ts">renderer.ts</a> + <a href="packages/toolkit-online/src/pages/media/components/MediaMonitor.vue">MediaMonitor.vue</a>：</p>
+<p>C 关闭（V3）：</p>
+<ul>
+<li>红 <code>Lp瞬时</code> / 蓝 <code>Leq等效Leq</code>；统计 <code>Leq：XX dB</code> 仍为 Leq(A)</li>
+</ul>
+<p>C 开启：</p>
+<ul>
+<li>四条（按勾选画，图例同步）：灰 <code>原始声压</code>、红 <code>LpA dBA</code>、橙 <code>LpC dBC</code>、蓝 <code>Leq(A)</code>，若勾 Leq(C) 再加青 <code>Leq(C)</code></li>
+<li>验收「4 条」：默认 C 开且出厂勾选时可见 原始 + LpA + LpC + Leq(A)（Leq(C) 为第 5 条可选，满足「切换查看 Leq(A)/Leq(C)」）</li>
+<li>统计：保留 Lmin/Avg/Lmax（仍基于 LpA）；<code>dBA Lp / Leq(A)</code> 与 <code>dBC Lp / Leq(C)</code> 两行标签</li>
+<li>悬停：Canvas <code>mousemove</code> 命中波形区时，竖线 + 文案读该时刻 LpA / LpC（无点则不画）；不引入 DOM 图例</li>
+</ul>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="mermaid"><code><span class="line"><span style="color:#E1E4E8">flowchart TB</span></span>
+<span class="line"><span style="color:#E1E4E8">  mic[MicStream] --> analyser[AnalyserNode]</span></span>
+<span class="line"><span style="color:#E1E4E8">  analyser --> aweight[AWeight_always]</span></span>
+<span class="line"><span style="color:#E1E4E8">  aweight --> lpA[LpA_LeqA]</span></span>
+<span class="line"><span style="color:#E1E4E8">  analyser --> cGate{enableCWeight}</span></span>
+<span class="line"><span style="color:#E1E4E8">  cGate -->|yes| raw[RawLpZ]</span></span>
+<span class="line"><span style="color:#E1E4E8">  cGate -->|yes| cweight[CWeight]</span></span>
+<span class="line"><span style="color:#E1E4E8">  cweight --> lpC[LpC_LeqC]</span></span>
+<span class="line"><span style="color:#E1E4E8">  cGate -->|no| skip[SkipC_sameAsV3]</span></span></code></pre>
+<h2 id="测试prd4-7">测试（prd4 §7）</h2>
+<p>chrome-devtools <code>/media</code>（mock 麦 + 可调增益）：</p>
+<ol>
+<li>默认：无 dBC、无灰/橙曲线，Lp/Leq 与 V3 相同（安静约 35–45）</li>
+<li>勾选 C：出现 dBA+dBC、4 条曲线与图例；低频/增益升高时 dBC 不低于 dBA</li>
+<li>悬停波形：能读到 A/C 分贝</li>
+<li>取消 C：C 曲线/读数消失，Leq(A)/LpA 不被清空</li>
+<li>重置：C 关，文案与算法回到出厂</li>
+<li>视频/录屏/齿轮/右侧铺满不回归</li>
+</ol>

@@ -1,0 +1,82 @@
+<!DOCTYPE html><meta charset="utf-8"><h1 id="音视频监控采集页">音视频监控采集页</h1>
+<p>在 <a href="packages/toolkit-online/src/pages/media/index.astro">packages/toolkit-online/src/pages/media/index.astro</a> 落地 <a href="packages/toolkit-online/src/pages/media/prd.md">prd.md</a>。现页为空；站点是 Astro + Vue3，按现有页面模式用 Vue 组件 + <code>client:load</code> 承载全部逻辑。</p>
+<h2 id="页面接入">页面接入</h2>
+<ul>
+<li><code>index.astro</code> 使用现有 <code>PageLayout</code> + <code>Layout</code>（<code>isFullScreen</code> + <code>hideHeader</code>），主区只挂一个全高 Vue 组件，不叠加其它 DOM。</li>
+<li>在 <a href="packages/toolkit-online/src/layouts/Side.astro">packages/toolkit-online/src/layouts/Side.astro</a> 增加「监控」入口（<code>id: media</code>, <code>link: /media</code>），否则路由无法从站内到达。</li>
+<li>画布铺满主内容区（侧栏保留，与其它频道一致）；<code>resize</code> 时同步 <code>canvas.width/height</code>（乘 <code>devicePixelRatio</code>）。</li>
+</ul>
+<h2 id="模块划分">模块划分</h2>
+<p>全部放在 <code>pages/media/</code>，避免改公共组件风格：</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>pages/media/index.astro</span></span>
+<span class="line"><span>pages/media/components/MediaMonitor.vue   # 单 canvas + 点击命中 + rAF 循环</span></span>
+<span class="line"><span>pages/media/lib/permissions.ts            # getUserMedia / getDisplayMedia</span></span>
+<span class="line"><span>pages/media/lib/audio-meter.ts            # RMS → 0-120dB、平滑、min/avg/max</span></span>
+<span class="line"><span>pages/media/lib/renderer.ts               # 视频底图、OSD、仪表盘、波形、提示/按钮</span></span></code></pre>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="mermaid"><code><span class="line"><span style="color:#E1E4E8">flowchart TB</span></span>
+<span class="line"><span style="color:#E1E4E8">  user[User] --> canvas[SingleCanvas]</span></span>
+<span class="line"><span style="color:#E1E4E8">  canvas --> hit[HitRegions]</span></span>
+<span class="line"><span style="color:#E1E4E8">  hit --> perm[RequestCameraMic]</span></span>
+<span class="line"><span style="color:#E1E4E8">  hit --> screen[RequestDisplayMedia]</span></span>
+<span class="line"><span style="color:#E1E4E8">  hit --> toggle[ToggleVideoSource]</span></span>
+<span class="line"><span style="color:#E1E4E8">  perm --> videoEl[HiddenVideoElement]</span></span>
+<span class="line"><span style="color:#E1E4E8">  screen --> videoEl</span></span>
+<span class="line"><span style="color:#E1E4E8">  perm --> audio[AudioContextAnalyser]</span></span>
+<span class="line"><span style="color:#E1E4E8">  videoEl --> raf[requestAnimationFrame]</span></span>
+<span class="line"><span style="color:#E1E4E8">  audio --> raf</span></span>
+<span class="line"><span style="color:#E1E4E8">  raf --> canvas</span></span></code></pre>
+<p>隐藏 <code>&#x3C;video></code> 仅作 <code>drawImage</code> 源，不出现在画面上，符合「不叠加可见 DOM」。</p>
+<h2 id="权限与源切换">权限与源切换</h2>
+<p>加载后先画「点击授权」引导（<code>getUserMedia</code> / <code>getDisplayMedia</code> 需要用户手势，不能裸 <code>onload</code> 弹框）。</p>
+<ol>
+<li>点击后申请 <strong>摄像头 + 麦克风</strong>（<code>video</code> + <code>audio</code>）。</li>
+<li>录屏按需：点「屏幕画面」时再 <code>getDisplayMedia({ video: true })</code>；录屏流不含麦克风，音频始终走独立 mic。</li>
+<li>默认背景：摄像头；画布右下画两个命中按钮：摄像头 / 录屏。</li>
+<li>异常全部 try/catch，画在画布上：
+<ul>
+<li>拒绝权限 / 不支持 API / <code>NotFoundError</code> / <code>NotReadableError</code></li>
+<li><code>video</code>/<code>audio</code> 的 <code>ended</code>/<code>inactive</code>（设备拔出、停止共享）</li>
+<li>部分浏览器无法同时开摄像头+录屏：捕获后提示并保持当前可用源</li>
+</ul>
+</li>
+</ol>
+<h2 id="分贝计算">分贝计算</h2>
+<p><code>AudioContext</code> + <code>AnalyserNode</code>（<code>fftSize</code> 2048，时域 <code>getByteTimeDomainData</code> 或 float PCM）：</p>
+<ul>
+<li><code>rms = sqrt(mean(samples^2))</code></li>
+<li><code>dBFS = 20 * log10(rms)</code>，<code>rms=0</code> 时按静音</li>
+<li>映射到 0–120：<code>db = clamp((dBFS + 60) * 2, 0, 120)</code>（约 -60dBFS→0，0dBFS→120）</li>
+<li>指数平滑：<code>smoothed += (db - smoothed) * 0.15</code></li>
+<li>会话统计：<code>min</code>、<code>max</code>、<code>sum/count</code> → <code>avg</code></li>
+<li>波形缓冲：每帧压一个平滑值，只保留最近 15 秒（按时长裁切，不按固定帧数）</li>
+</ul>
+<p>画布底部小字备注：分贝为相对可视化，非专业声级计。</p>
+<p>参考文案按当前 dB 档位切换，例如：</p>
+<ul>
+<li>~40：安静的图书馆</li>
+<li>~60：正常交谈</li>
+<li>~80：繁忙街道</li>
+<li>~100：地铁/嘈杂车间</li>
+</ul>
+<h2 id="canvas-绘制层底顶">Canvas 绘制层（底→顶）</h2>
+<p>每帧 <code>requestAnimationFrame</code>：</p>
+<ol>
+<li>铺满视频：<code>drawImage(video, 0, 0, w, h)</code>；无画面时深色底 + 提示。</li>
+<li>左上 OSD：<code>YYYY-MM-DD HH:MM:SS</code>，小字白字 + 黑描边/阴影；时间字符串每秒更新。</li>
+<li>右上半圆弧表盘 0–120，刻度 0/20/…/120；红指针跟平滑分贝；圆心大号 <code>XX分贝</code>；下方参考环境句。</li>
+<li>表盘下三行：最小 / 平均 / 最大。</li>
+<li>再下方 15 秒红色波形 + 淡红半透明填充；Y 轴同样 0–120 刻度。</li>
+<li>右下源切换按钮、错误条、精度备注（均在同一 canvas）。</li>
+</ol>
+<p>仪表盘用浅灰刻度、红色指针，贴合 PRD 监控风，不改站点侧栏/主题变量。</p>
+<h2 id="交互命中">交互命中</h2>
+<p>在 Vue 里对 canvas <code>click</code> 做坐标换算（考虑 DPR），检测授权按钮、源切换、重试区域。</p>
+<h2 id="测试">测试</h2>
+<p>按 feature skill：启动 <code>toolkit-online</code> dev，用 chrome-devtools 打开 <code>/media</code>，验证：</p>
+<ul>
+<li>拒绝/允许相机与麦克风后的画布提示与画面</li>
+<li>分贝数字、指针、波形随声音变化，min/avg/max 更新</li>
+<li>切换录屏（可能需用户手势）及停止共享后的回退/提示</li>
+<li>窗口 resize 后面画铺满且 overlay 位置正确</li>
+<li>侧栏「监控」可进入该页</li>
+</ul>

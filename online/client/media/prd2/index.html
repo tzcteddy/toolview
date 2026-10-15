@@ -1,0 +1,142 @@
+<!DOCTYPE html><meta charset="utf-8"><h1 id="音视频监控采集页面v1迭代版本需求文档">音视频监控采集页面｜V1迭代版本需求文档</h1>
+<blockquote>
+<p>基于原始版本需求迭代，新增齿轮设置按钮+配置弹窗，分为<strong>功能配置</strong>、<strong>UI配置</strong>两大模块；原有Canvas渲染、相机/麦克风/录屏、分贝仪表盘、时间戳、波形图表全部保留。</p>
+</blockquote>
+<h2 id="1-项目概述">1 项目概述</h2>
+<p>在原有Canvas监控页面基础上，增加悬浮设置入口（齿轮图标按钮），点击弹出配置弹窗。弹窗分为「功能配置」「UI配置」分组，支持开关设备、翻转移动设备摄像头、调整可视化组件尺寸参数；修改参数实时生效，关闭弹窗后监控画面继续运行。</p>
+<blockquote>
+<p>环境约束：依旧要求HTTPS/localhost，媒体权限、浏览器API限制继承原有版本约束。</p>
+</blockquote>
+<h2 id="2-原有需求继承">2 原有需求继承</h2>
+<ol>
+<li>Canvas整体渲染，底层为摄像头/录屏画面，叠加左上角时间戳、右上角分贝仪表盘、下方分贝滚动波形图</li>
+<li>媒体权限：相机、麦克风、录屏；分贝计算、min/avg/max统计、波形15秒滚动缓存逻辑不变</li>
+<li>错误捕获、设备断开、权限拒绝提示逻辑不变</li>
+<li>自适应窗口resize渲染逻辑不变</li>
+</ol>
+<h2 id="3-新增功能需求">3 新增功能需求</h2>
+<h3 id="31-设置入口齿轮图标按钮">3.1 设置入口（齿轮图标按钮）</h3>
+<ol>
+<li>UI：页面右下角悬浮齿轮⚙️图标按钮，悬浮层级高于Canvas画布，固定悬浮，不随canvas重绘消失（DOM元素，不绘制在canvas内部）</li>
+<li>交互：
+<ul>
+<li>点击齿轮：弹出配置弹窗</li>
+<li>再次点击齿轮 / 点击弹窗外部遮罩 / 弹窗关闭按钮：关闭配置弹窗</li>
+</ul>
+</li>
+<li>状态：弹窗打开时，底层监控画面<strong>继续实时运行，不暂停采集与渲染</strong></li>
+</ol>
+<h3 id="32-配置弹窗-分组1功能配置">3.2 配置弹窗-分组1：功能配置</h3>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>配置项</th><th>控件类型</th><th>说明</th></tr></thead><tbody><tr><td>开启视频画面</td><td>开关Toggle</td><td>控制摄像头视频流；关闭后，Canvas视频背景置为纯色背景（黑色）；开关关闭不会释放权限，再次打开直接恢复画面</td></tr><tr><td>开启麦克风</td><td>开关Toggle</td><td>控制麦克风音频采集；关闭后，分贝仪表盘、波形图停止更新，显示占位状态；关闭不释放权限，打开恢复分贝采集</td></tr><tr><td>移动设备‑翻转摄像头</td><td>按钮</td><td>仅移动端环境显示该按钮；切换前置/后置摄像头；PC端该配置项隐藏不可见</td></tr></tbody></table>
+<blockquote>
+<p>边界说明：</p>
+<ol>
+<li>“开启视频画面”开关，只控制画面是否渲染，不控制录屏源；如果当前背景源是录屏，该开关对录屏画面无效</li>
+<li>翻转摄像头执行时处理异常：设备不支持切换时弹窗toast提示用户</li>
+</ol>
+</blockquote>
+<h3 id="33-配置弹窗分组2ui配置修改实时生效">3.3 配置弹窗‑分组2：UI配置（修改<strong>实时生效</strong>）</h3>
+<p>所有参数修改后，Canvas立刻重绘，不需要重启页面。</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>配置项</th><th>控件类型</th><th>参数范围</th><th>说明</th></tr></thead><tbody><tr><td>仪表盘大小</td><td>滑块</td><td>30%‑100%</td><td>相对于原始仪表盘基准尺寸的缩放比例，控制右上角分贝仪表盘整体大小</td></tr><tr><td>字体大小</td><td>滑块</td><td>12px‑36px</td><td>控制左上角监控时间戳文字字号；保持白色+黑色描边样式不变</td></tr><tr><td>波形时长</td><td>滑块</td><td>5‑30秒</td><td>波形图保存历史数据时长；修改后波形图立刻切换为新的时间窗口，旧历史数据清空</td></tr></tbody></table>
+<h3 id="34-弹窗通用交互">3.4 弹窗通用交互</h3>
+<ol>
+<li>弹窗带半透明黑色遮罩层；弹窗标题：参数配置</li>
+<li>分组标题：【功能配置】、【UI配置】，分组内每个配置项标签+控件横向排布</li>
+<li>底部按钮：「重置默认值」、「关闭」
+<ul>
+<li>重置默认值：把全部开关、滑块恢复初始出厂参数，画布实时刷新</li>
+<li>关闭：关闭弹窗，保存当前所有配置，回到监控画面</li>
+</ul>
+</li>
+</ol>
+<h2 id="4-ui视觉规范迭代新增">4 UI视觉规范（迭代新增）</h2>
+<ol>
+<li>齿轮按钮：悬浮DOM，半透明底色，hover高亮；不绘制到canvas内部</li>
+<li>配置弹窗：白色背景，圆角，内部做分组分割；适配移动端，小屏幕弹窗自动做最大高度限制，内容可滚动</li>
+<li>Toggle开关、滑块组件：常规web组件样式；移动端触摸友好</li>
+<li>所有UI配置修改<strong>实时预览</strong>，不需要点击确认按钮</li>
+</ol>
+<h2 id="5-数据与状态管理">5 数据与状态管理</h2>
+<ol>
+<li>维护全局配置状态对象，保存所有配置：</li>
+</ol>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="json"><code><span class="line"><span style="color:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#79B8FF">  "videoEnable"</span><span style="color:#E1E4E8">: </span><span style="color:#79B8FF">true</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#79B8FF">  "micEnable"</span><span style="color:#E1E4E8">: </span><span style="color:#79B8FF">true</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#79B8FF">  "gaugeScale"</span><span style="color:#E1E4E8">: </span><span style="color:#79B8FF">100</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#79B8FF">  "timeFontSize"</span><span style="color:#E1E4E8">: </span><span style="color:#79B8FF">16</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#79B8FF">  "waveDuration"</span><span style="color:#E1E4E8">: </span><span style="color:#79B8FF">15</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span></code></pre>
+<ol start="2">
+<li>重置默认值：恢复上面这套初始参数</li>
+<li>参数变更后，canvas渲染逻辑读取状态对象，立即重绘仪表盘、时间文本、波形图表。</li>
+</ol>
+<h2 id="6-边界异常处理">6 边界&#x26;异常处理</h2>
+<ol>
+<li>PC端：自动隐藏「移动设备‑翻转摄像头」配置项</li>
+<li>关闭视频画面开关：如果当前是录屏作为背景源，给出提示：“当前背景源为屏幕共享，视频开关不生效”</li>
+<li>关闭麦克风：仪表盘指针停留在0，波形图置为平线，显示提示文字：麦克风已关闭</li>
+<li>修改波形时长：丢弃旧缓存分贝数组，重新开始收集新时间窗口数据</li>
+<li>设备切换（翻转摄像头）失败：toast提示“无法切换摄像头，设备不支持”，保持原有画面不变</li>
+</ol>
+<h2 id="7-非功能需求">7 非功能需求</h2>
+<ol>
+<li>弹窗操作不打断媒体流采集，监控画面持续运行</li>
+<li>参数修改低性能开销，不造成canvas卡顿</li>
+<li>弹窗兼容PC、移动触摸操作</li>
+<li>继承原有版本全部错误捕获逻辑</li>
+</ol>

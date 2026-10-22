@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>低频之声 · Low-Freq Visuals</title>
+<style>
+  :root { --bg:#000; --fg:#d8d8d8; --dim:#6a6a6a; --line:#1c1c1c; --accent:#7dff9a; }
+  * { box-sizing: border-box; }
+  html, body {
+    margin:0; padding:0; background:var(--bg); color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"SF Mono","JetBrains Mono",Menlo,Consolas,"PingFang SC","Microsoft YaHei",monospace;
+    -webkit-font-smoothing:antialiased;
+  }
+  body { min-height:100vh; display:flex; flex-direction:column; align-items:center; padding:28px 18px 48px; }
+  .wrap { width:100%; max-width:880px; }
+
+  header { display:flex; align-items:flex-end; justify-content:space-between; gap:20px; flex-wrap:wrap; margin-bottom:22px; }
+  h1 { font-size:14px; font-weight:600; letter-spacing:.28em; margin:0; color:#9a9a9a; text-transform:uppercase; }
+  h1 small { display:block; margin-top:6px; font-size:11px; letter-spacing:.14em; color:#4a4a4a; font-weight:400; }
+
+  .readout { text-align:right; line-height:1; }
+  .readout .value { font-size:64px; font-weight:700; letter-spacing:-.03em; font-variant-numeric:tabular-nums; color:var(--accent); text-shadow:0 0 26px rgba(125,255,154,.35); transition:color 90ms linear; }
+  .readout .unit { font-size:15px; font-weight:500; color:var(--dim); margin-left:6px; letter-spacing:.12em; }
+  .readout .meta { margin-top:8px; font-size:11px; color:#565656; letter-spacing:.1em; font-variant-numeric:tabular-nums; }
+
+  .stage { position:relative; background:#000; border:1px solid var(--line); border-radius:4px; padding:0; overflow:hidden; }
+  canvas { display:block; width:100%; height:520px; }
+  @media (max-width:640px){ canvas{ height:420px; } }
+
+  .badge { position:absolute; top:14px; right:16px; font-size:10px; letter-spacing:.18em; color:#3d3d3d; pointer-events:none; }
+
+  .panel { margin-top:18px; border:1px solid var(--line); border-radius:4px; padding:16px 18px; display:grid; grid-template-columns:1fr 1fr; gap:18px 28px; }
+  @media (max-width:640px){ .panel{ grid-template-columns:1fr; } .readout .value{ font-size:48px; } }
+
+  .group > .label { font-size:10px; letter-spacing:.2em; color:#5a5a5a; margin-bottom:10px; text-transform:uppercase; }
+  .group.full { grid-column:1 / -1; }
+  .seg { display:flex; flex-wrap:wrap; gap:8px; }
+  .seg button, .toggle {
+    appearance:none; background:#0a0a0a; border:1px solid #232323; color:#7d7d7d;
+    font:inherit; font-size:12px; letter-spacing:.06em; padding:8px 13px; border-radius:3px; cursor:pointer;
+    transition:color 120ms, border-color 120ms, background 120ms;
+  }
+  .seg button:hover, .toggle:hover { color:#cfcfcf; border-color:#3a3a3a; }
+  .seg button.on { color:#000; background:var(--accent); border-color:var(--accent); font-weight:600; }
+  .toggle.on { color:#000; background:#ffe14d; border-color:#ffe14d; font-weight:600; }
+
+  .row { display:flex; align-items:center; gap:14px; }
+  input[type="range"] { flex:1; appearance:none; -webkit-appearance:none; height:2px; background:#262626; outline:none; border-radius:2px; }
+  input[type="range"]::-webkit-slider-thumb { -webkit-appearance:none; width:13px; height:13px; border-radius:50%; background:var(--accent); cursor:pointer; box-shadow:0 0 10px rgba(125,255,154,.5); }
+  input[type="range"]::-moz-range-thumb { width:13px; height:13px; border:none; border-radius:50%; background:var(--accent); cursor:pointer; }
+  .num { font-size:12px; color:#8a8a8a; min-width:54px; text-align:right; font-variant-numeric:tabular-nums; }
+
+  .start {
+    grid-column:1 / -1; appearance:none; background:transparent; border:1px solid var(--accent); color:var(--accent);
+    font:inherit; font-size:13px; letter-spacing:.24em; padding:13px; border-radius:3px; cursor:pointer;
+    text-transform:uppercase; transition:background 140ms, color 140ms;
+  }
+  .start:hover { background:var(--accent); color:#000; }
+  .start.live { border-color:#b0141a; color:#ff5a5f; }
+  .start.live:hover { background:#b0141a; color:#fff; border-color:#b0141a; }
+
+  .status { grid-column:1 / -1; font-size:11px; letter-spacing:.08em; color:#565656; min-height:14px; text-align:center; }
+  .status.err { color:#ff5a5f; }
+
+  footer { margin-top:20px; font-size:10px; color:#3f3f3f; letter-spacing:.1em; text-align:center; line-height:1.9; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Low-Freq Visuals
+      <small>20–250 Hz 优先 · 内置降噪 · 5 种可视化自由切换</small>
+    </h1>
+    <div class="readout">
+      <div><span class="value" id="dbValue">--</span><span class="unit">dB</span></div>
+      <div class="meta"><span id="bandMeta">20–250 Hz</span> · <span id="noiseMeta">降噪 开</span></div>
+    </div>
+  </header>
+
+  <div class="stage">
+    <canvas id="viz"></canvas>
+    <div class="badge" id="badge">STANDBY</div>
+  </div>
+
+  <div class="panel">
+    <div class="group full">
+      <div class="label">可视化模式 / Visual Mode</div>
+      <div class="seg" id="modeSeg">
+        <button data-mode="ferro" class="on">磁流体</button>
+        <button data-mode="ripple">水面涟漪</button>
+        <button data-mode="seismo">地震仪</button>
+        <button data-mode="jelly">发光水母</button>
+        <button data-mode="rose">声音玫瑰</button>
+      </div>
+    </div>
+
+    <div class="group">
+      <div class="label">低频频段 / Band</div>
+      <div class="seg" id="bandSeg">
+        <button data-lo="20" data-hi="250" class="on">20–250 Hz</button>
+        <button data-lo="20" data-hi="60">20–60 Hz</button>
+        <button data-lo="60" data-hi="120">60–120 Hz</button>
+        <button data-lo="120" data-hi="250">120–250 Hz</button>
+      </div>
+    </div>
+
+    <div class="group">
+      <div class="label">降噪 / Noise Gate</div>
+      <div class="seg">
+        <button class="toggle on" id="noiseBtn">降噪 开</button>
+      </div>
+    </div>
+
+    <div class="group full">
+      <div class="label">灵敏度校准 / Offset</div>
+      <div class="row">
+        <input type="range" id="offset" min="70" max="130" step="1" value="100" />
+        <span class="num" id="offsetNum">+100 dB</span>
+      </div>
+    </div>
+
+    <button class="start" id="startBtn">开启麦克风 / START</button>
+    <div class="status" id="status">点击开始，浏览器会请求麦克风权限</div>
+  </div>
+
+  <footer>
+    分贝为相对量（未做声压校准），请用灵敏度滑块对齐参考值 · 需在 localhost 或 https 下运行<br />
+    磁流体 · 水面涟漪 · 地震仪 · 发光水母 · 声音玫瑰 —— 同一套低频音频管线，五种表达
+  </footer>
+</div>
+
+<script>
+(() => {
+  'use strict';
+
+  // ================= 音频量程 =================
+  const DB_MIN = 15, DB_MAX = 110;
+
+  // ================= 色阶：浅绿 → 黄 → 橙 → 深红 =================
+  const STOPS = [
+    { t: 0.00, c: [125, 255, 158] },
+    { t: 0.35, c: [255, 226, 77]  },
+    { t: 0.65, c: [255, 150, 46]  },
+    { t: 1.00, c: [176, 20, 26]   }
+  ];
+  function scaleColor(t) {
+    t = Math.max(0, Math.min(1, t));
+    for (let i = 0; i < STOPS.length - 1; i++) {
+      const a = STOPS[i], b = STOPS[i + 1];
+      if (t <= b.t) {
+        const k = (t - a.t) / (b.t - a.t || 1);
+        return [
+          Math.round(a.c[0] + (b.c[0] - a.c[0]) * k),
+          Math.round(a.c[1] + (b.c[1] - a.c[1]) * k),
+          Math.round(a.c[2] + (b.c[2] - a.c[2]) * k)
+        ];
+      }
+    }
+    return STOPS[STOPS.length - 1].c;
+  }
+  const rgb  = (c, a) => `rgba(${c[0]},${c[1]},${c[2]},${a === undefined ? 1 : a})`;
+  const lerp = (a, b, k) => a + (b - a) * k;
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+  // ================= DOM =================
+  const canvas   = document.getElementById('viz');
+  const ctx2d    = canvas.getContext('2d');
+  const dbValue  = document.getElementById('dbValue');
+  const bandMeta = document.getElementById('bandMeta');
+  const noiseMeta= document.getElementById('noiseMeta');
+  const badge    = document.getElementById('badge');
+  const startBtn = document.getElementById('startBtn');
+  const statusEl = document.getElementById('status');
+  const noiseBtn = document.getElementById('noiseBtn');
+  const offsetEl = document.getElementById('offset');
+  const offsetNum= document.getElementById('offsetNum');
+  const bandSeg  = document.getElementById('bandSeg');
+  const modeSeg  = document.getElementById('modeSeg');
+
+  // ================= 状态 =================
+  let bandLo = 20, bandHi = 250;
+  let noiseOn = true;
+  let offset  = 100;
+  let mode    = 'ferro';
+
+  let audioCtx=null, source=null, hp=null, lp1=null, lp2=null, analyser=null;
+  let stream=null, running=false;
+  let freqBuf=null, timeBuf=null;
+
+  let floorL=null, floorRms=null, warmupUntil=0;
+  let leq = DB_MIN, hasSample=false;
+
+  // 画布尺寸（CSS 像素）
+  let dpr=1, W=0, H=0;
+  function resize() {
+    dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    W = Math.max(1, Math.round(rect.width));
+    H = Math.max(1, Math.round(rect.height));
+    canvas.width  = Math.round(W * dpr);
+    canvas.height = Math.round(H * dpr);
+    ctx2d.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const r = MODES[mode];
+    if (r && r.init) r.init(W, H);
+    // 重设画布尺寸会清空像素：待机态需立即重绘（LIVE 态由 rAF 持续覆盖）
+    if (!running) drawIdle(performance.now() / 1000);
+  }
+  window.addEventListener('resize', resize);
+
+  // ================= 渲染器 =================
+  // 每个渲染器：{ init(w,h), draw(f) }
+  // f = { db, t, rawDb, rms, wave(Float32Array), dt, now, live }
+
+  // ---------- 磁流体 Ferrofluid ----------
+  const ferro = (() => {
+    const N = 150;
+    let w = 0, h = 0;
+    return {
+      init(cw, ch) { w = cw; h = ch; },
+      draw(f) {
+        // 聚光灯式深灰背景，衬托黑色磁流体
+        const cx = w / 2, cy = h / 2 + h * 0.04;
+        const g = ctx2d.createRadialGradient(cx, cy * 0.9, 40, cx, cy, Math.max(w, h) * 0.62);
+        g.addColorStop(0, '#191b20');
+        g.addColorStop(1, '#000000');
+        ctx2d.fillStyle = g;
+        ctx2d.fillRect(0, 0, w, h);
+
+        const t = f.t;
+        const col = scaleColor(t);
+        const R0 = Math.min(w, h) * 0.11;
+        const spikeMax = Math.min(w, h) * 0.26;
+
+        // 尖刺（径向三角形，长度随分贝 + 噪声抖动）
+        for (let i = 0; i < N; i++) {
+          const ang = (i / N) * Math.PI * 2;
+          const n = 0.55 + 0.45 * Math.sin(i * 3.7 + f.now * 2.1) * Math.sin(i * 1.31 - f.now * 1.37);
+          const len = R0 * 0.4 + spikeMax * (0.18 + 0.82 * t) * n;
+          const halfW = (Math.PI * 2 / N) * 1.45;
+          const bx1 = cx + Math.cos(ang - halfW) * R0;
+          const by1 = cy + Math.sin(ang - halfW) * R0;
+          const bx2 = cx + Math.cos(ang + halfW) * R0;
+          const by2 = cy + Math.sin(ang + halfW) * R0;
+          const tx = cx + Math.cos(ang) * (R0 + len);
+          const ty = cy + Math.sin(ang) * (R0 + len);
+
+          ctx2d.beginPath();
+          ctx2d.moveTo(bx1, by1);
+          ctx2d.quadraticCurveTo(
+            cx + Math.cos(ang) * (R0 + len * 0.55), cy + Math.sin(ang) * (R0 + len * 0.55),
+            tx, ty
+          );
+          ctx2d.quadraticCurveTo(
+            cx + Math.cos(ang) * (R0 + len * 0.5), cy + Math.sin(ang) * (R0 + len * 0.5),
+            bx2, by2
+          );
+          ctx2d.closePath();
+          ctx2d.fillStyle = '#050506';
+          ctx2d.fill();
+          // 高音量时尖刺边缘泛出当前色阶热光
+          ctx2d.strokeStyle = rgb(col, 0.06 + 0.30 * t * n);
+          ctx2d.lineWidth = 1;
+          ctx2d.stroke();
+        }
+
+        // 中心球体 + 高光
+        const bg = ctx2d.createRadialGradient(cx - R0 * 0.35, cy - R0 * 0.4, R0 * 0.1, cx, cy, R0 * 1.35);
+        bg.addColorStop(0, '#23252b');
+        bg.addColorStop(0.55, '#0a0a0c');
+        bg.addColorStop(1, '#000');
+        ctx2d.beginPath();
+        ctx2d.arc(cx, cy, R0 * (1 + 0.06 * t), 0, Math.PI * 2);
+        ctx2d.fillStyle = bg;
+        ctx2d.fill();
+        ctx2d.strokeStyle = rgb(col, 0.10 + 0.35 * t);
+        ctx2d.lineWidth = 1.2;
+        ctx2d.stroke();
+
+        // 顶部微光晕
+        ctx2d.beginPath();
+        ctx2d.arc(cx, cy, R0 * (1.6 + 1.1 * t), 0, Math.PI * 2);
+        const hg = ctx2d.createRadialGradient(cx, cy, R0, cx, cy, R0 * (1.6 + 1.1 * t));
+        hg.addColorStop(0, rgb(col, 0.10 * t));
+        hg.addColorStop(1, rgb(col, 0));
+        ctx2d.fillStyle = hg;
+        ctx2d.fill();
+      }
+    };
+  })();
+
+  // ---------- 水面涟漪 Water Ripple ----------
+  const ripple = (() => {
+    let w = 0, h = 0;
+    let ripples = [];
+    let peakHold = DB_MIN, lastRipple = 0;
+    return {
+      init(cw, ch) { w = cw; h = ch; ripples = []; peakHold = DB_MIN; lastRipple = 0; },
+      draw(f) {
+        ctx2d.fillStyle = '#000';
+        ctx2d.fillRect(0, 0, w, h);
+
+        const cx = w / 2, cy = h / 2;
+        const t = f.t;
+        const col = scaleColor(t);
+        const maxR = Math.hypot(Math.max(cx, w - cx), Math.max(cy, h - cy)) * 0.96;
+
+        // attack 检测：瞬时值显著抬升时落一颗"石子"
+        peakHold = Math.max(f.rawDb, peakHold - 6 * f.dt);
+        if (f.live && f.rawDb > peakHold - 2.5 && f.rawDb > DB_MIN + 6 && f.now - lastRipple > 0.18 && ripples.length < 14) {
+          ripples.push({ r: 10 + 26 * t, col: scaleColor(t), t, born: f.now });
+          lastRipple = f.now;
+        }
+
+        // 已有涟漪扩散
+        for (let i = ripples.length - 1; i >= 0; i--) {
+          const rp = ripples[i];
+          rp.r += (140 + 560 * rp.t) * f.dt;
+          if (rp.r > maxR) { ripples.splice(i, 1); continue; }
+          const a = Math.pow(1 - rp.r / maxR, 1.6);
+          ctx2d.beginPath();
+          ctx2d.arc(cx, cy, rp.r, 0, Math.PI * 2);
+          ctx2d.strokeStyle = rgb(rp.col, a * 0.85);
+          ctx2d.lineWidth = 1.5 + 4 * rp.t;
+          ctx2d.stroke();
+          // 内侧第二道细波
+          ctx2d.beginPath();
+          ctx2d.arc(cx, cy, rp.r * 0.94, 0, Math.PI * 2);
+          ctx2d.strokeStyle = rgb(rp.col, a * 0.28);
+          ctx2d.lineWidth = 1;
+          ctx2d.stroke();
+        }
+
+        // 中心水滴随音量脉动
+        const r = (22 + 34 * t) * (1 + 0.06 * Math.sin(f.now * 4));
+        const cg = ctx2d.createRadialGradient(cx, cy, 0, cx, cy, r * 2.6);
+        cg.addColorStop(0, rgb(col, 0.95));
+        cg.addColorStop(0.35, rgb(col, 0.45));
+        cg.addColorStop(1, rgb(col, 0));
+        ctx2d.beginPath();
+        ctx2d.arc(cx, cy, r * 2.6, 0, Math.PI * 2);
+        ctx2d.fillStyle = cg;
+        ctx2d.fill();
+        ctx2d.beginPath();
+        ctx2d.arc(cx, cy, r * 0.6, 0, Math.PI * 2);
+        ctx2d.fillStyle = '#fff';
+        ctx2d.globalAlpha = 0.75;
+        ctx2d.fill();
+        ctx2d.globalAlpha = 1;
+      }
+    };
+  })();
+
+  // ---------- 地震仪 Seismograph ----------
+  const seismo = (() => {
+    let w = 0, h = 0;
+    let hist = [];          // 历史振幅 [-1,1]
+    let gridOff = 0;        // 时间刻度滚动偏移
+    return {
+      init(cw, ch) { w = cw; h = ch; hist = new Array(Math.ceil(w)).fill(0); gridOff = 0; },
+      draw(f) {
+        // 每帧从时域缓冲均匀采样 8 点推进历史（约 1.5s 记录窗）
+        const K = 8;
+        if (f.wave && f.wave.length) {
+          for (let k = 0; k < K; k++) {
+            const idx = Math.floor((k + 0.5) / K * f.wave.length);
+            hist.push(clamp(f.wave[idx] * 6, -1, 1));   // 低频能量小，适当放大便于观察
+          }
+        } else {
+          for (let k = 0; k < K; k++) hist.push(0);
+        }
+        while (hist.length > w) hist.shift();
+
+        const t = f.t;
+        const col = scaleColor(t);
+        const cy = h * 0.52;
+        const amp = h * 0.30;
+
+        // 底：微弱暗面
+        ctx2d.fillStyle = '#030303';
+        ctx2d.fillRect(0, 0, w, h);
+
+        // 时间网格（纵向，每 100px 一条，随时间左移）
+        gridOff = (gridOff + f.dt * 90) % 100;
+        ctx2d.strokeStyle = '#121212';
+        ctx2d.lineWidth = 1;
+        for (let x = w - gridOff; x > 0; x -= 100) {
+          ctx2d.beginPath();
+          ctx2d.moveTo(Math.round(x) + 0.5, 0);
+          ctx2d.lineTo(Math.round(x) + 0.5, h);
+          ctx2d.stroke();
+        }
+        // 幅度参考线
+        ctx2d.strokeStyle = '#161616';
+        for (const v of [-1, -0.5, 0, 0.5, 1]) {
+          ctx2d.beginPath();
+          ctx2d.moveTo(0, cy - v * amp);
+          ctx2d.lineTo(w, cy - v * amp);
+          ctx2d.stroke();
+        }
+
+        // 波形（右新左旧，向右端点亮）
+        const n = hist.length;
+        ctx2d.lineWidth = 1.4;
+        ctx2d.lineJoin = 'round';
+        ctx2d.beginPath();
+        for (let i = 0; i < n; i++) {
+          const x = w - n + i;
+          const y = cy - hist[i] * amp;
+          if (i === 0) ctx2d.moveTo(x, y); else ctx2d.lineTo(x, y);
+        }
+        ctx2d.strokeStyle = rgb(col, 0.55);
+        ctx2d.stroke();
+
+        // 右端"笔尖"高亮 + 辉光
+        const lastY = cy - hist[n - 1] * amp;
+        ctx2d.shadowColor = rgb(col, 0.9);
+        ctx2d.shadowBlur = 14;
+        ctx2d.beginPath();
+        ctx2d.arc(w - 1, lastY, 2.6 + 2.4 * t, 0, Math.PI * 2);
+        ctx2d.fillStyle = rgb(col, 1);
+        ctx2d.fill();
+        ctx2d.shadowBlur = 0;
+
+        // 顶部读数条
+        ctx2d.font = '11px ui-monospace, Menlo, monospace';
+        ctx2d.textAlign = 'left';
+        ctx2d.fillStyle = '#4a4a4a';
+        ctx2d.fillText(`SEISMOGRAPH · ${bandLo}–${bandHi} Hz · ${f.live ? 'REC' : 'IDLE'}`, 16, 24);
+        ctx2d.textAlign = 'right';
+        ctx2d.fillStyle = rgb(col, 0.9);
+        ctx2d.fillText(`${Math.round(f.db)} dB`, w - 16, 24);
+      }
+    };
+  })();
+
+  // ---------- 发光水母 Jellyfish ----------
+  const jelly = (() => {
+    let w = 0, h = 0;
+    let phase = 0, driftSeed = Math.random() * 100;
+    let particles = [];
+    const PC = 60;
+    function spawn(p) { p.x = Math.random() * (w || 800); p.y = Math.random() * (h || 520); p.v = 6 + Math.random() * 14; p.s = 0.6 + Math.random() * 1.6; }
+    return {
+      init(cw, ch) {
+        w = cw; h = ch;
+        particles = [];
+        for (let i = 0; i < PC; i++) { const p = {}; spawn(p); particles.push(p); }
+      },
+      draw(f) {
+        // 深海渐变背景
+        const g = ctx2d.createLinearGradient(0, 0, 0, h);
+        g.addColorStop(0, '#020610');
+        g.addColorStop(1, '#000');
+        ctx2d.fillStyle = g;
+        ctx2d.fillRect(0, 0, w, h);
+
+        // 浮游微粒
+        ctx2d.fillStyle = 'rgba(150,200,230,0.35)';
+        for (const p of particles) {
+          p.y -= p.v * f.dt * (0.4 + f.t);
+          if (p.y < -4) { spawn(p); p.y = h + 4; }
+          ctx2d.globalAlpha = 0.12 + 0.3 * f.t;
+          ctx2d.beginPath();
+          ctx2d.arc(p.x, p.y, p.s, 0, Math.PI * 2);
+          ctx2d.fill();
+        }
+        ctx2d.globalAlpha = 1;
+
+        // 分贝越高搏动越快
+        phase += f.dt * (1.4 + 4.2 * f.t);
+        const beat = 0.5 + 0.5 * Math.sin(phase);
+
+        // 颜色：安静深海青蓝 → 轰鸣转红
+        const cool = [79, 216, 232];
+        const hot  = scaleColor(f.t);
+        const col = [
+          Math.round(lerp(cool[0], hot[0], f.t)),
+          Math.round(lerp(cool[1], hot[1], f.t)),
+          Math.round(lerp(cool[2], hot[2], f.t))
+        ];
+
+        const cx = w / 2 + Math.sin(f.now * 0.3 + driftSeed) * w * 0.12;
+        const cy = h * 0.36 + Math.sin(f.now * 0.5 + driftSeed) * 14;
+        const R  = Math.min(w, h) * (0.16 + 0.07 * beat * (0.5 + f.t));
+        const Rx = R * (0.9 + 0.22 * beat);
+        const Ry = R * (0.66 + 0.10 * beat);
+
+        // 触须（先画，压在伞盖下）
+        const tent = 9;
+        for (let i = 0; i < tent; i++) {
+          const k = (i / (tent - 1)) * 2 - 1;                 // -1..1
+          const sx = cx + k * Rx * 0.86;
+          const sy = cy + Ry * 0.32;
+          const len = R * (1.5 + 1.3 * f.t) * (0.7 + 0.5 * beat);
+          const sway = Math.sin(phase * 1.3 + i * 0.9) * R * (0.22 + 0.5 * f.t);
+          ctx2d.beginPath();
+          ctx2d.moveTo(sx, sy);
+          ctx2d.bezierCurveTo(
+            sx + sway, sy + len * 0.35,
+            sx - sway, sy + len * 0.7,
+            sx + sway * 0.6, sy + len
+          );
+          ctx2d.strokeStyle = rgb(col, 0.28 + 0.35 * f.t);
+          ctx2d.lineWidth = 1 + 1.6 * (1 - Math.abs(k));
+          ctx2d.stroke();
+        }
+
+        // 伞盖（上半椭圆，半透明发光）
+        ctx2d.beginPath();
+        ctx2d.moveTo(cx - Rx, cy + Ry * 0.3);
+        ctx2d.bezierCurveTo(cx - Rx, cy - Ry * 1.15, cx + Rx, cy - Ry * 1.15, cx + Rx, cy + Ry * 0.3);
+        // 下缘波浪裙边
+        const folds = 6;
+        for (let i = 0; i <= folds; i++) {
+          const kx = lerp(cx + Rx, cx - Rx, i / folds);
+          const ky = cy + Ry * (0.3 + (i % 2 === 0 ? 0.02 : 0.16) * (0.6 + beat));
+          ctx2d.lineTo(kx, ky);
+        }
+        ctx2d.closePath();
+
+        const sg = ctx2d.createRadialGradient(cx, cy - Ry * 0.4, R * 0.08, cx, cy, Rx * 1.25);
+        sg.addColorStop(0, rgb(col, 0.55 + 0.3 * beat));
+        sg.addColorStop(0.55, rgb(col, 0.28));
+        sg.addColorStop(1, rgb(col, 0.02));
+        ctx2d.fillStyle = sg;
+        ctx2d.shadowColor = rgb(col, 0.8);
+        ctx2d.shadowBlur = 30 + 60 * f.t;
+        ctx2d.fill();
+        ctx2d.shadowBlur = 0;
+
+        // 核心亮斑
+        ctx2d.beginPath();
+        ctx2d.arc(cx, cy - Ry * 0.35, R * (0.16 + 0.07 * beat), 0, Math.PI * 2);
+        const kg = ctx2d.createRadialGradient(cx, cy - Ry * 0.35, 0, cx, cy - Ry * 0.35, R * 0.24);
+        kg.addColorStop(0, 'rgba(255,255,255,0.85)');
+        kg.addColorStop(1, rgb(col, 0));
+        ctx2d.fillStyle = kg;
+        ctx2d.fill();
+      }
+    };
+  })();
+
+  // ---------- 声音玫瑰 Sound Rose ----------
+  const rose = (() => {
+    let w = 0, h = 0;
+    let petals = [];
+    let lastPetal = 0, lastRaw = DB_MIN;
+    const GOLDEN = Math.PI * (3 - Math.sqrt(5));
+    return {
+      init(cw, ch) { w = cw; h = ch; petals = []; lastPetal = 0; lastRaw = DB_MIN; },
+      clear() { petals = []; },
+      draw(f) {
+        ctx2d.fillStyle = '#000';
+        ctx2d.fillRect(0, 0, w, h);
+
+        const cx = w / 2, cy = h / 2;
+        const maxLen = Math.min(w, h) * 0.44;
+
+        // 脉冲检测（上升沿 + 最小间隔）
+        if (f.live && f.rawDb > lastRaw + 1.5 && f.rawDb > DB_MIN + 8 && f.now - lastPetal > 0.14) {
+          petals.push({
+            ang: petals.length * GOLDEN,
+            len: maxLen * (0.12 + 0.88 * f.t),
+            col: scaleColor(f.t)
+          });
+          if (petals.length > 400) petals.shift();
+          lastPetal = f.now;
+        }
+        lastRaw = f.rawDb;
+
+        // 花瓣（半透明叠加）
+        for (const p of petals) {
+          const ex = cx + Math.cos(p.ang) * p.len;
+          const ey = cy + Math.sin(p.ang) * p.len;
+          const c1x = cx + Math.cos(p.ang - 0.42) * p.len * 0.55;
+          const c1y = cy + Math.sin(p.ang - 0.42) * p.len * 0.55;
+          const c2x = cx + Math.cos(p.ang + 0.42) * p.len * 0.55;
+          const c2y = cy + Math.sin(p.ang + 0.42) * p.len * 0.55;
+          ctx2d.beginPath();
+          ctx2d.moveTo(cx, cy);
+          ctx2d.quadraticCurveTo(c1x, c1y, ex, ey);
+          ctx2d.quadraticCurveTo(c2x, c2y, cx, cy);
+          ctx2d.closePath();
+          ctx2d.fillStyle = rgb(p.col, 0.16);
+          ctx2d.fill();
+          ctx2d.strokeStyle = rgb(p.col, 0.5);
+          ctx2d.lineWidth = 0.8;
+          ctx2d.stroke();
+        }
+
+        // 花芯
+        const cg = ctx2d.createRadialGradient(cx, cy, 0, cx, cy, 26);
+        cg.addColorStop(0, 'rgba(255,255,255,0.9)');
+        cg.addColorStop(0.4, rgb(scaleColor(f.t), 0.6));
+        cg.addColorStop(1, rgb(scaleColor(f.t), 0));
+        ctx2d.beginPath();
+        ctx2d.arc(cx, cy, 26, 0, Math.PI * 2);
+        ctx2d.fillStyle = cg;
+        ctx2d.fill();
+
+        // 空态提示
+        if (petals.length === 0) {
+          ctx2d.font = '12px ui-monospace, Menlo, monospace';
+          ctx2d.textAlign = 'center';
+          ctx2d.fillStyle = '#3a3a3a';
+          ctx2d.fillText('开始采集后，每一次声音脉冲将留下一瓣', cx, cy + 60);
+        }
+        // 计数
+        ctx2d.font = '11px ui-monospace, Menlo, monospace';
+        ctx2d.textAlign = 'left';
+        ctx2d.fillStyle = '#4a4a4a';
+        ctx2d.fillText(`PETALS ${petals.length}`, 16, 24);
+      }
+    };
+  })();
+
+  const MODES = { ferro, ripple, seismo, jelly, rose };
+
+  // ================= 绘制主循环 =================
+  function drawIdle(now) {
+    const r = MODES[mode];
+    r.draw({ db: DB_MIN, t: 0.05, rawDb: DB_MIN, rms: 0, wave: null, dt: 1 / 60, now, live: false });
+  }
+
+  // ================= 音频链 =================
+  function buildGraph() {
+    source = audioCtx.createMediaStreamSource(stream);
+    hp = audioCtx.createBiquadFilter();
+    hp.type = 'highpass'; hp.frequency.value = bandLo; hp.Q.value = 0.707;
+    lp1 = audioCtx.createBiquadFilter();
+    lp1.type = 'lowpass'; lp1.frequency.value = bandHi; lp1.Q.value = 0.707;
+    lp2 = audioCtx.createBiquadFilter();
+    lp2.type = 'lowpass'; lp2.frequency.value = bandHi; lp2.Q.value = 0.707;
+    analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 8192;
+    analyser.smoothingTimeConstant = 0.55;
+    analyser.minDecibels = -115;
+    analyser.maxDecibels = -20;
+    source.connect(hp); hp.connect(lp1); lp1.connect(lp2); lp2.connect(analyser);
+    freqBuf = new Float32Array(analyser.frequencyBinCount);
+    timeBuf = new Float32Array(analyser.fftSize);
+  }
+
+  function applyBand() {
+    bandMeta.textContent = `${bandLo}–${bandHi} Hz`;   // UI 先更新
+    if (!audioCtx) return;
+    const now = audioCtx.currentTime;
+    hp.frequency.setTargetAtTime(bandLo, now, 0.02);
+    lp1.frequency.setTargetAtTime(bandHi, now, 0.02);
+    lp2.frequency.setTargetAtTime(bandHi, now, 0.02);
+  }
+
+  // ================= 分贝计算（时域门限 + 频域谱减 + Leq 平滑） =================
+  function computeLevel() {
+    analyser.getFloatTimeDomainData(timeBuf);
+    let sq = 0;
+    for (let i = 0; i < timeBuf.length; i++) sq += timeBuf[i] * timeBuf[i];
+    const rms = Math.sqrt(sq / timeBuf.length);
+    if (floorRms === null) floorRms = rms;
+    else if (rms < floorRms) floorRms = rms;
+    else floorRms += (rms - floorRms) * 0.0015;
+
+    const gated = noiseOn && performance.now() > warmupUntil && rms < floorRms * 1.7;
+
+    analyser.getFloatFrequencyData(freqBuf);
+    const binHz = audioCtx.sampleRate / analyser.fftSize;
+    let sum = 0, n = 0;
+    for (let i = 1; i < freqBuf.length; i++) {
+      const f = i * binHz;
+      if (f < bandLo) continue;
+      if (f > bandHi) break;
+      sum += Math.pow(10, freqBuf[i] / 10);
+      n++;
+    }
+    if (n === 0) return null;
+    let L = 10 * Math.log10(sum + 1e-14);
+
+    if (floorL === null) floorL = L;
+    else if (L < floorL) floorL = L;
+    else floorL += (L - floorL) * 0.0015;
+
+    if (noiseOn) {
+      if (gated) L = floorL;
+      else {
+        const sig = Math.pow(10, L / 10) - Math.pow(10, floorL / 10) * 0.85;
+        L = 10 * Math.log10(Math.max(sig, 1e-14));
+      }
+    }
+    return { L, rms };
+  }
+
+  let lastTs = 0;
+  function loop(ts) {
+    if (!running) return;
+    const dt = clamp((ts - lastTs) / 1000, 0.001, 0.05);
+    lastTs = ts;
+
+    const now = ts / 1000;
+    const res = computeLevel();
+    if (res) {
+      const display = res.L + offset;
+      if (!hasSample) { leq = display; hasSample = true; }
+      else leq += (display - leq) * (display > leq ? 0.45 : 0.10);
+    }
+    const clamped = clamp(leq, DB_MIN, DB_MAX);
+    const t = (clamped - DB_MIN) / (DB_MAX - DB_MIN);
+
+    dbValue.textContent = String(Math.round(clamped));
+    const col = scaleColor(t);
+    dbValue.style.color = rgb(col);
+    dbValue.style.textShadow = `0 0 26px ${rgb(col, 0.4)}`;
+
+    MODES[mode].draw({
+      db: clamped, t,
+      rawDb: res ? res.L + offset : DB_MIN,
+      rms: res ? res.rms : 0,
+      wave: timeBuf,
+      dt, now, live: true
+    });
+
+    requestAnimationFrame(loop);
+  }
+
+  // ================= 控件 =================
+  modeSeg.addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-mode]');
+    if (!btn) return;
+    modeSeg.querySelectorAll('button').forEach(b => b.classList.remove('on'));
+    btn.classList.add('on');
+    mode = btn.dataset.mode;
+    badge.textContent = MODE_NAME[mode] + (running ? ' · LIVE' : ' · STANDBY');
+    resize();   // 切模式重建该渲染器画布
+  });
+  const MODE_NAME = { ferro:'FERROFLUID', ripple:'RIPPLE', seismo:'SEISMOGRAPH', jelly:'JELLYFISH', rose:'SOUND ROSE' };
+
+  bandSeg.addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-lo]');
+    if (!btn) return;
+    bandSeg.querySelectorAll('button').forEach(b => b.classList.remove('on'));
+    btn.classList.add('on');
+    bandLo = +btn.dataset.lo; bandHi = +btn.dataset.hi;
+    floorL = null; floorRms = null;
+    warmupUntil = performance.now() + 1200;
+    applyBand();
+  });
+
+  noiseBtn.addEventListener('click', () => {
+    noiseOn = !noiseOn;
+    noiseBtn.textContent = noiseOn ? '降噪 开' : '降噪 关';
+    noiseBtn.classList.toggle('on', noiseOn);
+    noiseMeta.textContent = noiseOn ? '降噪 开' : '降噪 关';
+  });
+
+  offsetEl.addEventListener('input', () => {
+    offset = +offsetEl.value;
+    offsetNum.textContent = `+${offset} dB`;
+  });
+
+  function setStatus(msg, isErr) {
+    statusEl.textContent = msg;
+    statusEl.classList.toggle('err', !!isErr);
+  }
+
+  startBtn.addEventListener('click', async () => {
+    if (running) { stop(); return; }
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      setStatus('当前页面不是安全上下文（需 https 或 localhost 访问），浏览器已禁用麦克风 API', true);
+      badge.textContent = 'BLOCKED';
+      return;
+    }
+    try {
+      setStatus('请求麦克风权限…');
+      stream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation:false, noiseSuppression:false, autoGainControl:false, channelCount:1 }
+      });
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === 'suspended') await audioCtx.resume();
+      buildGraph();
+      applyBand();
+      running = true; hasSample = false;
+      floorL = null; floorRms = null;
+      warmupUntil = performance.now() + 1500;
+      startBtn.textContent = '停止 / STOP';
+      startBtn.classList.add('live');
+      badge.textContent = MODE_NAME[mode] + ' · LIVE';
+      badge.style.color = '#ff5a5f';
+      setStatus(`采样率 ${audioCtx.sampleRate} Hz · FFT ${analyser.fftSize} · 分辨率 ${(audioCtx.sampleRate / analyser.fftSize).toFixed(2)} Hz/bin`);
+      lastTs = performance.now();
+      requestAnimationFrame(loop);
+    } catch (err) {
+      running = false;
+      setStatus('无法访问麦克风：' + (err && err.message ? err.message : err), true);
+      badge.textContent = 'ERROR';
+      badge.style.color = '#ff5a5f';
+    }
+  });
+
+  function stop() {
+    running = false;
+    if (stream) stream.getTracks().forEach(t => t.stop());
+    stream = null;
+    if (audioCtx) audioCtx.close().catch(() => {});
+    audioCtx = null;
+    source = hp = lp1 = lp2 = analyser = null;
+    hasSample = false;
+    startBtn.textContent = '开启麦克风 / START';
+    startBtn.classList.remove('live');
+    badge.textContent = MODE_NAME[mode] + ' · STANDBY';
+    badge.style.color = '#3d3d3d';
+    dbValue.textContent = '--';
+    dbValue.style.color = 'var(--accent)';
+    setStatus('已停止 · 点击开始重新采集');
+    // 停止后仍画一帧待机态
+    const r = MODES[mode];
+    if (r && r.init) r.init(W, H);
+    drawIdle(performance.now() / 1000);
+  }
+
+  // ================= 启动 =================
+  resize();
+  drawIdle(0);
+})();
+</script>
+</body>
+</html>

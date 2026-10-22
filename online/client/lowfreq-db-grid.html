@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>低频分贝点阵 · Low-Freq dB Grid</title>
+<style>
+  :root {
+    --bg: #000000;
+    --fg: #d8d8d8;
+    --dim: #6a6a6a;
+    --line: #1c1c1c;
+    --accent: #7dff9a;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Mono", "JetBrains Mono", Menlo, Consolas, "PingFang SC", "Microsoft YaHei", monospace;
+    -webkit-font-smoothing: antialiased;
+  }
+  body {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 28px 18px 48px;
+  }
+  .wrap { width: 100%; max-width: 880px; }
+
+  header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 20px;
+    flex-wrap: wrap;
+    margin-bottom: 22px;
+  }
+  h1 {
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.28em;
+    margin: 0;
+    color: #9a9a9a;
+    text-transform: uppercase;
+  }
+  h1 small {
+    display: block;
+    margin-top: 6px;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    color: #4a4a4a;
+    font-weight: 400;
+  }
+
+  .readout { text-align: right; line-height: 1; }
+  .readout .value {
+    font-size: 64px;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    font-variant-numeric: tabular-nums;
+    color: var(--accent);
+    text-shadow: 0 0 26px rgba(125, 255, 154, 0.35);
+    transition: color 90ms linear;
+  }
+  .readout .unit {
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--dim);
+    margin-left: 6px;
+    letter-spacing: 0.12em;
+  }
+  .readout .meta {
+    margin-top: 8px;
+    font-size: 11px;
+    color: #565656;
+    letter-spacing: 0.1em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .stage {
+    position: relative;
+    background: #000;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 10px;
+  }
+  canvas { display: block; width: 100%; height: 420px; }
+
+  .badge {
+    position: absolute;
+    top: 14px;
+    right: 16px;
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    color: #3d3d3d;
+    pointer-events: none;
+  }
+
+  .panel {
+    margin-top: 18px;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 16px 18px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px 28px;
+  }
+  @media (max-width: 640px) {
+    .panel { grid-template-columns: 1fr; }
+    .readout .value { font-size: 48px; }
+  }
+
+  .group > .label {
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    color: #5a5a5a;
+    margin-bottom: 10px;
+    text-transform: uppercase;
+  }
+
+  .seg { display: flex; flex-wrap: wrap; gap: 8px; }
+  .seg button, .toggle {
+    appearance: none;
+    background: #0a0a0a;
+    border: 1px solid #232323;
+    color: #7d7d7d;
+    font: inherit;
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    padding: 8px 13px;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: color 120ms, border-color 120ms, background 120ms;
+  }
+  .seg button:hover, .toggle:hover { color: #cfcfcf; border-color: #3a3a3a; }
+  .seg button.on {
+    color: #000;
+    background: var(--accent);
+    border-color: var(--accent);
+    font-weight: 600;
+  }
+  .toggle.on {
+    color: #000;
+    background: #ffe14d;
+    border-color: #ffe14d;
+    font-weight: 600;
+  }
+
+  .row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  input[type="range"] {
+    flex: 1;
+    appearance: none;
+    -webkit-appearance: none;
+    height: 2px;
+    background: #262626;
+    outline: none;
+    border-radius: 2px;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 13px; height: 13px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+    box-shadow: 0 0 10px rgba(125,255,154,0.5);
+  }
+  input[type="range"]::-moz-range-thumb {
+    width: 13px; height: 13px;
+    border: none;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+  }
+  .num {
+    font-size: 12px;
+    color: #8a8a8a;
+    min-width: 54px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .start {
+    grid-column: 1 / -1;
+    appearance: none;
+    background: transparent;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    font: inherit;
+    font-size: 13px;
+    letter-spacing: 0.24em;
+    padding: 13px;
+    border-radius: 3px;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: background 140ms, color 140ms;
+  }
+  .start:hover { background: var(--accent); color: #000; }
+  .start.live { border-color: #b0141a; color: #ff5a5f; }
+  .start.live:hover { background: #b0141a; color: #fff; border-color: #b0141a; }
+
+  .status {
+    grid-column: 1 / -1;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    color: #565656;
+    min-height: 14px;
+    text-align: center;
+  }
+  .status.err { color: #ff5a5f; }
+
+  footer {
+    margin-top: 20px;
+    font-size: 10px;
+    color: #3f3f3f;
+    letter-spacing: 0.1em;
+    text-align: center;
+    line-height: 1.9;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Low-Freq dB Grid
+      <small>20–250 Hz 优先 · 内置降噪 · 单点分贝映射</small>
+    </h1>
+    <div class="readout">
+      <div><span class="value" id="dbValue">--</span><span class="unit">dB</span></div>
+      <div class="meta"><span id="bandMeta">20–250 Hz</span> · <span id="noiseMeta">降噪 开</span></div>
+    </div>
+  </header>
+
+  <div class="stage">
+    <canvas id="grid"></canvas>
+    <div class="badge" id="badge">STANDBY</div>
+  </div>
+
+  <div class="panel">
+    <div class="group">
+      <div class="label">低频频段 / Band</div>
+      <div class="seg" id="bandSeg">
+        <button data-lo="20" data-hi="250" class="on">20–250 Hz</button>
+        <button data-lo="20" data-hi="60">20–60 Hz</button>
+        <button data-lo="60" data-hi="120">60–120 Hz</button>
+        <button data-lo="120" data-hi="250">120–250 Hz</button>
+      </div>
+    </div>
+
+    <div class="group">
+      <div class="label">降噪 / Noise Gate</div>
+      <div class="seg">
+        <button class="toggle on" id="noiseBtn">降噪 开</button>
+      </div>
+    </div>
+
+    <div class="group" style="grid-column: 1 / -1;">
+      <div class="label">灵敏度校准 / Offset</div>
+      <div class="row">
+        <input type="range" id="offset" min="70" max="130" step="1" value="100" />
+        <span class="num" id="offsetNum">+100 dB</span>
+      </div>
+    </div>
+
+    <button class="start" id="startBtn">开启麦克风 / START</button>
+    <div class="status" id="status">点击开始，浏览器会请求麦克风权限</div>
+  </div>
+
+  <footer>
+    每个像素点 = 1 dB 档位（15–110 dB），检测到对应低频信号时仅点亮该档单个点<br />
+    分贝值为相对量（未做声压校准），请用灵敏度滑块对齐参考值 · 需在 localhost 或 https 下运行
+  </footer>
+</div>
+
+<script>
+(() => {
+  'use strict';
+
+  // ---------- 点阵参数 ----------
+  const COLS = 16;
+  const ROWS = 6;
+  const DB_MIN = 15;
+  const DB_MAX = 110;            // 共 96 档 = COLS * ROWS，每点 1 dB
+  const LEVELS = DB_MAX - DB_MIN + 1;
+
+  // ---------- 色阶：浅绿 → 黄 → 橙 → 深红 ----------
+  const STOPS = [
+    { t: 0.00, c: [125, 255, 158] },  // 浅绿
+    { t: 0.35, c: [255, 226, 77]  },  // 黄
+    { t: 0.65, c: [255, 150, 46]  },  // 橙
+    { t: 1.00, c: [176, 20, 26]   }   // 深红
+  ];
+  function scaleColor(t) {
+    t = Math.max(0, Math.min(1, t));
+    for (let i = 0; i < STOPS.length - 1; i++) {
+      const a = STOPS[i], b = STOPS[i + 1];
+      if (t <= b.t) {
+        const k = (t - a.t) / (b.t - a.t || 1);
+        return [
+          Math.round(a.c[0] + (b.c[0] - a.c[0]) * k),
+          Math.round(a.c[1] + (b.c[1] - a.c[1]) * k),
+          Math.round(a.c[2] + (b.c[2] - a.c[2]) * k)
+        ];
+      }
+    }
+    return STOPS[STOPS.length - 1].c;
+  }
+  const rgb = (c, a) => `rgba(${c[0]},${c[1]},${c[2]},${a === undefined ? 1 : a})`;
+
+  // ---------- DOM ----------
+  const canvas   = document.getElementById('grid');
+  const ctx2d    = canvas.getContext('2d');
+  const dbValue  = document.getElementById('dbValue');
+  const bandMeta = document.getElementById('bandMeta');
+  const noiseMeta= document.getElementById('noiseMeta');
+  const badge    = document.getElementById('badge');
+  const startBtn = document.getElementById('startBtn');
+  const statusEl = document.getElementById('status');
+  const noiseBtn = document.getElementById('noiseBtn');
+  const offsetEl = document.getElementById('offset');
+  const offsetNum= document.getElementById('offsetNum');
+  const bandSeg  = document.getElementById('bandSeg');
+
+  // ---------- 状态 ----------
+  let bandLo = 20, bandHi = 250;
+  let noiseOn = true;
+  let offset  = 100;
+
+  let audioCtx = null, source = null, hp = null, lp1 = null, lp2 = null, analyser = null;
+  let stream = null, running = false;
+  let freqBuf = null, timeBuf = null;
+
+  // 底噪追踪
+  let floorL = null;          // 频域能量底噪 (dB)
+  let floorRms = null;        // 时域 RMS 底噪
+  let warmupUntil = 0;
+
+  // Leq 平滑 + 档位迟滞
+  let leq = DB_MIN;
+  let levelIdx = 0;           // 当前点亮的档位索引
+  let hasSample = false;
+
+  // ---------- 布局 ----------
+  let dpr = 1, W = 0, H = 0, padL = 52, padR = 14, padT = 16, padB = 18;
+  function resize() {
+    dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    W = Math.max(1, Math.round(rect.width));
+    H = Math.max(1, Math.round(rect.height));
+    canvas.width  = Math.round(W * dpr);
+    canvas.height = Math.round(H * dpr);
+    ctx2d.setTransform(dpr, 0, 0, dpr, 0, 0);
+    draw();   // 重设画布尺寸会清空像素，需立即重绘（含待机点阵）
+  }
+  window.addEventListener('resize', resize);
+
+  // 蛇形排布：底部第一行从左到右递增，往上逐行推进（行内反向）
+  function idxToCell(idx, row, col) {
+    row = Math.floor(idx / COLS);           // 0 = 最底行（最低分贝）
+    const pos = idx % COLS;
+    col = (row % 2 === 0) ? pos : (COLS - 1 - pos);
+    return [col, row];
+  }
+
+  function draw() {
+    ctx2d.clearRect(0, 0, W, H);
+    const gw = W - padL - padR;
+    const gh = H - padT - padB;
+    const cellW = gw / COLS;
+    const cellH = gh / ROWS;
+    const dot = Math.max(6, Math.min(cellW, cellH) * 0.46);
+
+    // 行标签（每行起点分贝）
+    ctx2d.font = '10px ui-monospace, Menlo, monospace';
+    ctx2d.textAlign = 'right';
+    ctx2d.textBaseline = 'middle';
+    for (let r = 0; r < ROWS; r++) {
+      const v = DB_MIN + r * COLS;
+      const y = padT + gh - (r + 0.5) * cellH;
+      ctx2d.fillStyle = '#333333';
+      ctx2d.fillText(String(v), padL - 12, y);
+    }
+
+    for (let i = 0; i < LEVELS; i++) {
+      const [c, r] = idxToCell(i, 0, 0);
+      const x = padL + (c + 0.5) * cellW;
+      const y = padT + gh - (r + 0.5) * cellH;
+      const lit = hasSample && i === levelIdx;
+
+      if (lit) {
+        const t = (DB_MIN + i - DB_MIN) / (DB_MAX - DB_MIN);
+        const col = scaleColor(t);
+        ctx2d.shadowColor = rgb(col, 0.9);
+        ctx2d.shadowBlur = 22;
+        ctx2d.fillStyle = rgb(col, 1);
+        roundDot(x, y, dot);
+        // 内芯提亮
+        ctx2d.shadowBlur = 0;
+        ctx2d.fillStyle = rgb([
+          Math.min(255, col[0] + 70),
+          Math.min(255, col[1] + 45),
+          Math.min(255, col[2] + 45)
+        ], 1);
+        roundDot(x, y, dot * 0.5);
+      } else {
+        ctx2d.shadowBlur = 0;
+        ctx2d.fillStyle = '#1a1a1a';   // 待机暗点：黑底上仍可见的有序点阵
+        roundDot(x, y, dot);
+      }
+    }
+    ctx2d.shadowBlur = 0;
+  }
+
+  function roundDot(x, y, s) {
+    const h = s / 2;
+    const r = Math.max(1, s * 0.18);
+    ctx2d.beginPath();
+    ctx2d.moveTo(x - h + r, y - h);
+    ctx2d.arcTo(x + h, y - h, x + h, y + h, r);
+    ctx2d.arcTo(x + h, y + h, x - h, y + h, r);
+    ctx2d.arcTo(x - h, y + h, x - h, y - h, r);
+    ctx2d.arcTo(x - h, y - h, x + h, y - h, r);
+    ctx2d.closePath();
+    ctx2d.fill();
+  }
+
+  // ---------- 音频链 ----------
+  function buildGraph() {
+    source = audioCtx.createMediaStreamSource(stream);
+
+    // 高通 20Hz 去除直流 / 超低频漂移
+    hp = audioCtx.createBiquadFilter();
+    hp.type = 'highpass';
+    hp.frequency.value = bandLo;
+    hp.Q.value = 0.707;
+
+    // 两级低通，形成较陡的低频上限，聚焦 250Hz 以内
+    lp1 = audioCtx.createBiquadFilter();
+    lp1.type = 'lowpass';
+    lp1.frequency.value = bandHi;
+    lp1.Q.value = 0.707;
+
+    lp2 = audioCtx.createBiquadFilter();
+    lp2.type = 'lowpass';
+    lp2.frequency.value = bandHi;
+    lp2.Q.value = 0.707;
+
+    analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 8192;              // ~5.9Hz/bin @48k，低频分辨率更高
+    analyser.smoothingTimeConstant = 0.55;
+    analyser.minDecibels = -115;
+    analyser.maxDecibels = -20;
+
+    source.connect(hp);
+    hp.connect(lp1);
+    lp1.connect(lp2);
+    lp2.connect(analyser);
+    // 注意：不连接到 destination，避免麦克风回放产生啸叫
+
+    freqBuf = new Float32Array(analyser.frequencyBinCount);
+    timeBuf = new Float32Array(analyser.fftSize);
+  }
+
+  function applyBand() {
+    bandMeta.textContent = `${bandLo}–${bandHi} Hz`;   // 无论音频是否启动都先更新 UI
+    if (!audioCtx) return;
+    const now = audioCtx.currentTime;
+    hp.frequency.setTargetAtTime(bandLo, now, 0.02);
+    lp1.frequency.setTargetAtTime(bandHi, now, 0.02);
+    lp2.frequency.setTargetAtTime(bandHi, now, 0.02);
+  }
+
+  // ---------- 分贝计算 ----------
+  function computeLevel() {
+    // 1) 时域：RMS + 底噪追踪
+    analyser.getFloatTimeDomainData(timeBuf);
+    let sq = 0;
+    for (let i = 0; i < timeBuf.length; i++) sq += timeBuf[i] * timeBuf[i];
+    const rms = Math.sqrt(sq / timeBuf.length);
+
+    if (floorRms === null) floorRms = rms;
+    else if (rms < floorRms) floorRms = rms;                 // 快速跟随向下
+    else floorRms += (rms - floorRms) * 0.0015;              // 缓慢抬升（min-hold）
+
+    const gated = noiseOn && performance.now() > warmupUntil &&
+                  rms < floorRms * 1.7;                     // 低于底噪约 +4.6dB 视为静音
+
+    // 2) 频域：带内能量求和 → 频带级
+    analyser.getFloatFrequencyData(freqBuf);
+    const binHz = audioCtx.sampleRate / analyser.fftSize;
+    let sum = 0, n = 0;
+    for (let i = 1; i < freqBuf.length; i++) {
+      const f = i * binHz;
+      if (f < bandLo) continue;
+      if (f > bandHi) break;
+      sum += Math.pow(10, freqBuf[i] / 10);
+      n++;
+    }
+    if (n === 0) return null;
+    let L = 10 * Math.log10(sum + 1e-14);
+
+    // 3) 频域底噪追踪与谱减
+    if (floorL === null) floorL = L;
+    else if (L < floorL) floorL = L;
+    else floorL += (L - floorL) * 0.0015;
+
+    if (noiseOn) {
+      if (gated) {
+        L = floorL;                                        // 抑制到本底
+      } else {
+        const sig = Math.pow(10, L / 10) - Math.pow(10, floorL / 10) * 0.85;
+        L = 10 * Math.log10(Math.max(sig, 1e-14));
+      }
+    }
+    return L;
+  }
+
+  // Leq 平滑（快起慢落）+ 档位迟滞，避免闪烁乱跳
+  function updateMeter() {
+    const L = computeLevel();
+    if (L === null) return;
+
+    const display = L + offset;
+
+    if (!hasSample) { leq = display; hasSample = true; }
+    else {
+      const k = display > leq ? 0.45 : 0.10;               // attack / release
+      leq += (display - leq) * k;
+    }
+
+    const clamped = Math.max(DB_MIN, Math.min(DB_MAX, leq));
+    const target = Math.round(clamped);
+
+    // 迟滞：偏离当前档位中心 0.75 dB 以上才切换
+    if (target !== levelIdx && Math.abs(clamped - (DB_MIN + levelIdx)) > 0.75) {
+      levelIdx = target;
+    }
+
+    const shown = DB_MIN + levelIdx;
+    dbValue.textContent = String(shown);
+    const col = scaleColor((shown - DB_MIN) / (DB_MAX - DB_MIN));
+    dbValue.style.color = rgb(col);
+    dbValue.style.textShadow = `0 0 26px ${rgb(col, 0.4)}`;
+  }
+
+  function loop() {
+    if (!running) return;
+    updateMeter();
+    draw();
+    requestAnimationFrame(loop);
+  }
+
+  // ---------- 控件 ----------
+  bandSeg.addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-lo]');
+    if (!btn) return;
+    bandSeg.querySelectorAll('button').forEach(b => b.classList.remove('on'));
+    btn.classList.add('on');
+    bandLo = +btn.dataset.lo;
+    bandHi = +btn.dataset.hi;
+    // 换段后重新学习底噪
+    floorL = null; floorRms = null;
+    warmupUntil = performance.now() + 1200;
+    applyBand();
+  });
+
+  noiseBtn.addEventListener('click', () => {
+    noiseOn = !noiseOn;
+    noiseBtn.textContent = noiseOn ? '降噪 开' : '降噪 关';
+    noiseBtn.classList.toggle('on', noiseOn);
+    noiseMeta.textContent = noiseOn ? '降噪 开' : '降噪 关';
+  });
+
+  offsetEl.addEventListener('input', () => {
+    offset = +offsetEl.value;
+    offsetNum.textContent = `+${offset} dB`;
+  });
+
+  function setStatus(msg, isErr) {
+    statusEl.textContent = msg;
+    statusEl.classList.toggle('err', !!isErr);
+  }
+
+  startBtn.addEventListener('click', async () => {
+    if (running) {
+      stop();
+      return;
+    }
+    // 非 localhost 的 http:// 环境属于非安全上下文，Chrome 会禁用麦克风 API
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      setStatus('当前页面不是安全上下文（需 https 或 localhost 访问），浏览器已禁用麦克风 API', true);
+      badge.textContent = 'BLOCKED';
+      badge.style.color = '#ff5a5f';
+      return;
+    }
+    try {
+      setStatus('请求麦克风权限…');
+      stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: false,
+          noiseSuppression: false,   // 关闭浏览器自带降噪，使用本页算法
+          autoGainControl: false,
+          channelCount: 1
+        }
+      });
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === 'suspended') await audioCtx.resume();
+      buildGraph();
+      applyBand();
+
+      running = true;
+      hasSample = false;
+      floorL = null; floorRms = null;
+      warmupUntil = performance.now() + 1500;
+
+      startBtn.textContent = '停止 / STOP';
+      startBtn.classList.add('live');
+      badge.textContent = 'LIVE';
+      badge.style.color = '#ff5a5f';
+      setStatus(`采样率 ${audioCtx.sampleRate} Hz · FFT ${analyser.fftSize} · 分辨率 ${(audioCtx.sampleRate / analyser.fftSize).toFixed(2)} Hz/bin`);
+      requestAnimationFrame(loop);
+    } catch (err) {
+      running = false;
+      setStatus('无法访问麦克风：' + (err && err.message ? err.message : err), true);
+      badge.textContent = 'ERROR';
+      badge.style.color = '#ff5a5f';
+    }
+  });
+
+  function stop() {
+    running = false;
+    if (stream) stream.getTracks().forEach(t => t.stop());
+    stream = null;
+    if (audioCtx) audioCtx.close().catch(() => {});
+    audioCtx = null;
+    source = hp = lp1 = lp2 = analyser = null;
+    hasSample = false;
+    startBtn.textContent = '开启麦克风 / START';
+    startBtn.classList.remove('live');
+    badge.textContent = 'STANDBY';
+    badge.style.color = '#3d3d3d';
+    dbValue.textContent = '--';
+    dbValue.style.color = 'var(--accent)';
+    ctx2d.clearRect(0, 0, W, H);
+    setStatus('已停止 · 点击开始重新采集');
+  }
+
+  resize();
+  draw();   // 待机时画出点阵底图
+})();
+</script>
+</body>
+</html>

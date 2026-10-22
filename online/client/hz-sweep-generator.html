@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Hz 信号发生器 · Sweep Generator</title>
+<style>
+  :root { --bg:#000; --fg:#d8d8d8; --dim:#6a6a6a; --line:#1c1c1c; --accent:#7dff9a; }
+  * { box-sizing: border-box; }
+  html, body {
+    margin:0; padding:0; background:var(--bg); color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"SF Mono","JetBrains Mono",Menlo,Consolas,"PingFang SC","Microsoft YaHei",monospace;
+    -webkit-font-smoothing:antialiased;
+  }
+  body { min-height:100vh; display:flex; flex-direction:column; align-items:center; padding:28px 18px 48px; }
+  .wrap { width:100%; max-width:880px; }
+
+  header { display:flex; align-items:flex-end; justify-content:space-between; gap:20px; flex-wrap:wrap; margin-bottom:22px; }
+  h1 { font-size:14px; font-weight:600; letter-spacing:.28em; margin:0; color:#9a9a9a; text-transform:uppercase; }
+  h1 small { display:block; margin-top:6px; font-size:11px; letter-spacing:.14em; color:#4a4a4a; font-weight:400; }
+  .readout { text-align:right; line-height:1; }
+  .readout .value { font-size:56px; font-weight:700; letter-spacing:-.03em; font-variant-numeric:tabular-nums; color:var(--accent); text-shadow:0 0 26px rgba(125,255,154,.35); }
+  .readout .unit { font-size:15px; font-weight:500; color:var(--dim); margin-left:6px; letter-spacing:.12em; }
+  .readout .meta { margin-top:8px; font-size:11px; color:#565656; letter-spacing:.1em; font-variant-numeric:tabular-nums; }
+
+  .stage { position:relative; background:#000; border:1px solid var(--line); border-radius:4px; overflow:hidden; }
+  canvas { display:block; width:100%; height:240px; }
+  .badge { position:absolute; top:12px; right:16px; font-size:10px; letter-spacing:.18em; color:#3d3d3d; pointer-events:none; }
+
+  .panel { margin-top:18px; border:1px solid var(--line); border-radius:4px; padding:16px 18px; display:grid; grid-template-columns:1fr 1fr; gap:18px 28px; }
+  @media (max-width:640px){ .panel{ grid-template-columns:1fr; } .readout .value{ font-size:42px; } }
+  .group > .label { font-size:10px; letter-spacing:.2em; color:#5a5a5a; margin-bottom:10px; text-transform:uppercase; }
+  .group.full { grid-column:1 / -1; }
+  .seg { display:flex; flex-wrap:wrap; gap:8px; }
+  .seg button {
+    appearance:none; background:#0a0a0a; border:1px solid #232323; color:#7d7d7d;
+    font:inherit; font-size:12px; letter-spacing:.06em; padding:8px 13px; border-radius:3px; cursor:pointer;
+    transition:color 120ms, border-color 120ms, background 120ms;
+  }
+  .seg button:hover { color:#cfcfcf; border-color:#3a3a3a; }
+  .seg button.on { color:#000; background:var(--accent); border-color:var(--accent); font-weight:600; }
+
+  .row { display:flex; align-items:center; gap:14px; }
+  .row + .row { margin-top:12px; }
+  .row .cap { font-size:11px; color:#6a6a6a; min-width:76px; letter-spacing:.06em; }
+  input[type="range"] { flex:1; appearance:none; -webkit-appearance:none; height:2px; background:#262626; outline:none; border-radius:2px; }
+  input[type="range"]::-webkit-slider-thumb { -webkit-appearance:none; width:13px; height:13px; border-radius:50%; background:var(--accent); cursor:pointer; box-shadow:0 0 10px rgba(125,255,154,.5); }
+  input[type="range"]::-moz-range-thumb { width:13px; height:13px; border:none; border-radius:50%; background:var(--accent); cursor:pointer; }
+  .num { font-size:12px; color:#8a8a8a; min-width:60px; text-align:right; font-variant-numeric:tabular-nums; }
+
+  input[type="number"] {
+    appearance:none; -webkit-appearance:none; background:#0a0a0a; border:1px solid #232323; color:#cfcfcf;
+    font:inherit; font-size:13px; padding:7px 9px; border-radius:3px; width:88px; text-align:right;
+    font-variant-numeric:tabular-nums;
+  }
+  input[type="number"]:focus { outline:none; border-color:var(--accent); }
+  input[type="number"]::-webkit-outer-spin-button, input[type="number"]::-webkit-inner-spin-button { -webkit-appearance:none; margin:0; }
+  input[type="number"] { -moz-appearance:textfield; }
+  .inline { display:flex; align-items:center; gap:8px; font-size:11px; color:#6a6a6a; }
+  .inline + .inline { margin-top:10px; }
+  .inline input[type="number"] { width:74px; }
+
+  .start {
+    grid-column:1 / -1; appearance:none; background:transparent; border:1px solid var(--accent); color:var(--accent);
+    font:inherit; font-size:13px; letter-spacing:.24em; padding:13px; border-radius:3px; cursor:pointer;
+    text-transform:uppercase; transition:background 140ms, color 140ms;
+  }
+  .start:hover { background:var(--accent); color:#000; }
+  .start.live { border-color:#b0141a; color:#ff5a5f; }
+  .start.live:hover { background:#b0141a; color:#fff; border-color:#b0141a; }
+
+  .status { grid-column:1 / -1; font-size:11px; letter-spacing:.08em; color:#565656; min-height:14px; text-align:center; }
+  .status.err { color:#ff5a5f; }
+  .warn { grid-column:1 / -1; font-size:10px; color:#7a5a1a; letter-spacing:.06em; line-height:1.7; border-top:1px solid #161616; padding-top:12px; }
+
+  footer { margin-top:20px; font-size:10px; color:#3f3f3f; letter-spacing:.1em; text-align:center; line-height:1.9; }
+  .hidden { display:none !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Hz Sweep Generator
+      <small>输出音频流 · 定频 / 自动扫频 / 自动步进（按 Hz 调整）</small>
+    </h1>
+    <div class="readout">
+      <div><span class="value" id="freqValue">--</span><span class="unit">Hz</span></div>
+      <div class="meta"><span id="waveMeta">正弦波</span> · <span id="modeMeta">定频</span></div>
+    </div>
+  </header>
+
+  <div class="stage">
+    <canvas id="trace"></canvas>
+    <div class="badge" id="badge">IDLE</div>
+  </div>
+
+  <div class="panel">
+    <div class="group full">
+      <div class="label">波形 / Waveform · 敲击取证看「脉冲类」</div>
+      <div class="waves">
+        <div class="wcat">
+          <span class="wcat-t">基础</span>
+          <div class="seg" id="waveSeg">
+            <button data-wave="sine" class="on">正弦</button>
+            <button data-wave="square">方波</button>
+            <button data-wave="triangle">三角</button>
+            <button data-wave="sawtooth">锯齿</button>
+            <button data-wave="revsaw">降锯齿</button>
+          </div>
+        </div>
+        <div class="wcat">
+          <span class="wcat-t">脉冲</span>
+          <div class="seg" id="pulseSeg">
+            <button data-wave="pulse">矩形脉冲</button>
+            <button data-wave="gauss">高斯脉冲</button>
+            <button data-wave="ringdown">阻尼振荡</button>
+          </div>
+        </div>
+        <div class="wcat">
+          <span class="wcat-t">噪声</span>
+          <div class="seg" id="noiseSeg">
+            <button data-wave="white">白噪</button>
+            <button data-wave="pink">粉噪</button>
+            <button data-wave="brown">棕噪</button>
+            <button data-wave="blue">蓝噪</button>
+            <button data-wave="violet">紫噪</button>
+            <button data-wave="gray">灰噪</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="group">
+      <div class="label">模式 / Mode</div>
+      <div class="seg" id="modeSeg">
+        <button data-mode="fixed" class="on">定频</button>
+        <button data-mode="sweep">扫频</button>
+        <button data-mode="step">步进</button>
+      </div>
+    </div>
+
+    <!-- 定频 -->
+    <div class="group full" id="fixedGroup">
+      <div class="label">固定频率 / Fixed</div>
+      <div class="row">
+        <span class="cap">频率</span>
+        <input type="range" id="freqSlider" min="0" max="1000" step="1" value="500" />
+        <span class="num" id="freqNum">100 Hz</span>
+      </div>
+      <div class="row">
+        <span class="cap">低频快捷</span>
+        <div class="seg" id="presetSeg">
+          <button data-f="20">20</button><button data-f="31.5">31.5</button><button data-f="50">50</button>
+          <button data-f="63">63</button><button data-f="100">100</button><button data-f="125">125</button>
+          <button data-f="200">200</button><button data-f="250">250</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 扫频 -->
+    <div class="group full hidden" id="sweepGroup">
+      <div class="label">自动扫频 / Sweep</div>
+      <div class="inline">
+        起始 <input type="number" id="sweepFrom" value="20" min="1" max="20000" step="1" /> Hz
+        &nbsp;→&nbsp; 结束 <input type="number" id="sweepTo" value="250" min="1" max="20000" step="1" /> Hz
+        &nbsp;·&nbsp; 单程 <input type="number" id="sweepDur" value="6" min="0.5" max="120" step="0.5" /> s
+      </div>
+      <div class="inline">
+        方向
+        <div class="seg" id="dirSeg">
+          <button data-dir="up" class="on">单向 ↑</button>
+          <button data-dir="pingpong">往复 ↕</button>
+        </div>
+        <span style="color:#4a4a4a">频率按对数插值，听感匀速</span>
+      </div>
+    </div>
+
+    <!-- 步进 -->
+    <div class="group full hidden" id="stepGroup">
+      <div class="label">自动步进 / Step</div>
+      <div class="inline">
+        起始 <input type="number" id="stepFrom" value="20" min="1" max="20000" step="1" /> Hz
+        &nbsp;→&nbsp; 结束 <input type="number" id="stepTo" value="250" min="1" max="20000" step="1" /> Hz
+        &nbsp;·&nbsp; 步长 <input type="number" id="stepSize" value="10" min="0.1" max="5000" step="0.1" /> Hz
+      </div>
+      <div class="inline">
+        每步停留 <input type="number" id="stepHold" value="0.3" min="0.05" max="30" step="0.05" /> s
+        &nbsp;·&nbsp; 到达终点后
+        <div class="seg" id="endSeg">
+          <button data-end="loop" class="on">循环</button>
+          <button data-end="stop">停止</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="group">
+      <div class="label">输出音量 / Volume</div>
+      <div class="row">
+        <input type="range" id="volSlider" min="0" max="100" step="1" value="8" />
+        <span class="num" id="volNum">8%</span>
+      </div>
+      <div class="row">
+        <div class="seg"><button id="muteBtn">静音</button></div>
+      </div>
+    </div>
+
+    <div class="group">
+      <div class="label">轨迹图时间窗 / Trace Window</div>
+      <div class="row">
+        <div class="seg" id="winSeg">
+          <button data-win="10">10 s</button>
+          <button data-win="30" class="on">30 s</button>
+          <button data-win="60">60 s</button>
+          <button data-win="120">120 s</button>
+        </div>
+      </div>
+    </div>
+
+    <button class="start" id="startBtn">启动输出 / START</button>
+    <div class="status" id="status">启动后将通过扬声器发声，请先调低音量</div>
+    <div class="warn">
+      ⚠ 注意：30 Hz 以下为次声/极低频段——人耳几乎听不见，但扬声器振盆会大幅运动；
+      请勿在高音量下长时间输出极低频，避免损坏喇叭或听力。方波/锯齿含丰富谐波，低频时听感更响。
+    </div>
+  </div>
+
+  <footer>
+    Web Audio API 振荡器输出 · 扫频按对数插值（听感匀速） · 步进模式按设定 Hz 增量自动跳变<br />
+    本页面为输出设备，与麦克风可视化页面（lowfreq-viz.html）配合可构成"发声 → 采集"闭环测试
+  </footer>
+</div>
+
+<script>
+(() => {
+  'use strict';
+
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+  // ================= DOM =================
+  const canvas    = document.getElementById('trace');
+  const ctx2d     = canvas.getContext('2d');
+  const freqValue = document.getElementById('freqValue');
+  const waveMeta  = document.getElementById('waveMeta');
+  const modeMeta  = document.getElementById('modeMeta');
+  const badge     = document.getElementById('badge');
+  const startBtn  = document.getElementById('startBtn');
+  const statusEl  = document.getElementById('status');
+
+  const freqSlider = document.getElementById('freqSlider');
+  const freqNum    = document.getElementById('freqNum');
+  const volSlider  = document.getElementById('volSlider');
+  const volNum     = document.getElementById('volNum');
+  const muteBtn    = document.getElementById('muteBtn');
+
+  const fixedGroup = document.getElementById('fixedGroup');
+  const sweepGroup = document.getElementById('sweepGroup');
+  const stepGroup  = document.getElementById('stepGroup');
+
+  const sweepFrom = document.getElementById('sweepFrom');
+  const sweepTo   = document.getElementById('sweepTo');
+  const sweepDur  = document.getElementById('sweepDur');
+  const stepFrom  = document.getElementById('stepFrom');
+  const stepTo    = document.getElementById('stepTo');
+  const stepSize  = document.getElementById('stepSize');
+  const stepHold  = document.getElementById('stepHold');
+
+  const WAVE_NAME = {
+    // 一、经典基础
+    sine:'正弦波', square:'方波', triangle:'三角波', sawtooth:'锯齿波', revsaw:'降锯齿',
+    // 二、脉冲类
+    pulse:'矩形脉冲', gauss:'高斯脉冲', ringdown:'阻尼振荡',
+    // 三、噪声系列
+    white:'白噪声', pink:'粉噪声', brown:'棕噪声', blue:'蓝噪声', violet:'紫噪声', gray:'灰噪声'
+  };
+  const MODE_NAME = { fixed:'定频', sweep:'扫频', step:'步进' };
+  // 波形分类（用于控制面板显示/隐藏脉冲参数、以及频率含义）
+  const isNoise   = (wv) => ['white','pink','brown','blue','violet','gray'].includes(wv);
+  const isPulse   = (wv) => ['pulse','gauss','ringdown'].includes(wv);
+
+  // ================= 状态 =================
+  let wave = 'sine';
+  let mode = 'fixed';
+  let dir  = 'up';          // sweep: up | pingpong
+  let endMode = 'loop';     // step: loop | stop
+  let winSec = 30;          // 轨迹时间窗
+
+  // 频率滑块（对数映射）：0–1000 → 1–20000 Hz
+  const F_MIN = 1, F_MAX = 20000;
+  const sliderToFreq = (s) => F_MIN * Math.pow(F_MAX / F_MIN, s / 1000);
+  const freqToSlider = (f) => 1000 * Math.log(clamp(f, F_MIN, F_MAX) / F_MIN) / Math.log(F_MAX / F_MIN);
+  let fixedFreq = 100;
+
+  let vol = 8;              // 0–100 %
+  let muted = false;
+
+  let running = false;
+  let audioCtx = null, osc = null, gain = null, noiseSrc = null, noiseGain = null;
+  let t0 = 0;               // 模式起始时间（AudioContext.currentTime）
+  let curFreq = 0;          // 当前输出频率
+  let trace = [];           // {t, f} 轨迹
+  let lastTs = 0;
+
+  // ================= 画布尺寸 =================
+  let dpr = 1, W = 0, H = 0;
+  function resize() {
+    dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    W = Math.max(1, Math.round(rect.width));
+    H = Math.max(1, Math.round(rect.height));
+    canvas.width  = Math.round(W * dpr);
+    canvas.height = Math.round(H * dpr);
+    ctx2d.setTransform(dpr, 0, 0, dpr, 0, 0);
+    drawTrace();
+  }
+  window.addEventListener('resize', resize);
+
+  // ================= 频率计算（对数插值） =================
+  function lerpHz(a, b, p) {
+    if (a <= 0 || b <= 0) return b;
+    return a * Math.pow(b / a, clamp(p, 0, 1));
+  }
+
+  // 按模式计算当前应输出的频率；返回 null 表示白噪（无频率）
+  function computeFreq(elapsed) {
+    if (wave === 'noise') return null;
+    if (mode === 'fixed') return fixedFreq;
+
+    if (mode === 'sweep') {
+      const f0 = clamp(+sweepFrom.value || 20, F_MIN, F_MAX);
+      const f1 = clamp(+sweepTo.value || 250, F_MIN, F_MAX);
+      const d  = Math.max(0.5, +sweepDur.value || 6);
+      let p = (elapsed % (dir === 'pingpong' ? d * 2 : d)) / d;
+      if (dir === 'pingpong' && p > 1) p = 2 - p;   // 往复三角
+      return lerpHz(f0, f1, p);
+    }
+
+    // step：按 Hz 步长逐级跳变
+    const a  = clamp(+stepFrom.value || 20, F_MIN, F_MAX);
+    const b  = clamp(+stepTo.value || 250, F_MIN, F_MAX);
+    const sz = Math.max(0.1, +stepSize.value || 10);
+    const hold = Math.max(0.05, +stepHold.value || 0.3);
+    const n = Math.floor(Math.abs(b - a) / sz);            // 总步数
+    const dirSign = b >= a ? 1 : -1;
+    let idx = Math.floor(elapsed / hold);
+    if (endMode === 'stop') {
+      if (idx > n) return b;                                // 到终点停住
+    } else {
+      idx = idx % (n + 1);                                  // 循环
+    }
+    return clamp(a + dirSign * Math.min(idx, n) * sz, F_MIN, F_MAX);
+  }
+
+  // ================= 轨迹绘制 =================
+  const F_LO = 10, F_HI = 22050;
+  const freqToY = (f) => {
+    const lc = clamp(Math.log(clamp(f, F_LO, F_HI) / F_LO) / Math.log(F_HI / F_LO), 0, 1);
+    return H - 18 - lc * (H - 36);   // 对数纵轴
+  };
+
+  function drawTrace() {
+    ctx2d.fillStyle = '#000';
+    ctx2d.fillRect(0, 0, W, H);
+
+    // 频率网格（10 / 100 / 1k / 10k）
+    ctx2d.font = '10px ui-monospace, Menlo, monospace';
+    ctx2d.textAlign = 'left';
+    for (const f of [10, 30, 100, 300, 1000, 3000, 10000]) {
+      const y = freqToY(f);
+      ctx2d.strokeStyle = '#121212';
+      ctx2d.lineWidth = 1;
+      ctx2d.beginPath();
+      ctx2d.moveTo(0, Math.round(y) + 0.5);
+      ctx2d.lineTo(W, Math.round(y) + 0.5);
+      ctx2d.stroke();
+      ctx2d.fillStyle = '#3a3a3a';
+      ctx2d.fillText(f >= 1000 ? (f / 1000) + 'k' : String(f), 10, y - 4);
+    }
+    // 低频区底色强调（≤250Hz，本工具的目标频段）
+    ctx2d.fillStyle = 'rgba(125,255,154,0.03)';
+    ctx2d.fillRect(0, freqToY(250), W, freqToY(10) - freqToY(250));
+
+    // 轨迹曲线
+    if (trace.length > 1) {
+      const nowT = trace[trace.length - 1].t;
+      ctx2d.lineWidth = 1.6;
+      ctx2d.lineJoin = 'round';
+      ctx2d.beginPath();
+      let pen = false;
+      for (const p of trace) {
+        if (p.f === null) { pen = false; continue; }     // 白噪段断开
+        const x = W - (nowT - p.t) / winSec * W;
+        if (x < -20) continue;
+        if (!pen) { ctx2d.moveTo(x, freqToY(p.f)); pen = true; }
+        else ctx2d.lineTo(x, freqToY(p.f));
+      }
+      const grad = ctx2d.createLinearGradient(0, 0, W, 0);
+      grad.addColorStop(0, 'rgba(125,255,154,0.15)');
+      grad.addColorStop(1, 'rgba(125,255,154,0.95)');
+      ctx2d.strokeStyle = grad;
+      ctx2d.stroke();
+
+      // 当前端点光点
+      const last = trace[trace.length - 1];
+      if (last.f !== null) {
+        const y = freqToY(last.f);
+        ctx2d.shadowColor = 'rgba(125,255,154,0.9)';
+        ctx2d.shadowBlur = 12;
+        ctx2d.beginPath();
+        ctx2d.arc(W - 2, y, 3, 0, Math.PI * 2);
+        ctx2d.fillStyle = '#7dff9a';
+        ctx2d.fill();
+        ctx2d.shadowBlur = 0;
+      } else {
+        ctx2d.fillStyle = '#3a3a3a';
+        ctx2d.textAlign = 'right';
+        ctx2d.fillText('WHITE NOISE —', W - 16, H / 2);
+      }
+    } else {
+      ctx2d.fillStyle = '#3a3a3a';
+      ctx2d.textAlign = 'center';
+      ctx2d.fillText('启动输出后，这里将绘制 频率(Hz) 随时间变化的轨迹', W / 2, H / 2);
+    }
+  }
+
+  // ================= 音频输出 =================
+  function buildAudio() {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    gain = audioCtx.createGain();
+    gain.gain.value = 0;
+    gain.connect(audioCtx.destination);
+
+    if (wave === 'noise') {
+      // 白噪：2s 循环缓冲
+      const len = audioCtx.sampleRate * 2;
+      const buf = audioCtx.createBuffer(1, len, audioCtx.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+      noiseSrc = audioCtx.createBufferSource();
+      noiseSrc.buffer = buf;
+      noiseSrc.loop = true;
+      noiseSrc.connect(gain);
+      noiseSrc.start();
+      curFreq = 0;
+    } else {
+      osc = audioCtx.createOscillator();
+      osc.type = wave;
+      osc.frequency.value = fixedFreq;
+      osc.connect(gain);
+      osc.start();
+      curFreq = fixedFreq;
+    }
+    // 音量缓升防爆音（120ms）
+    const target = muted ? 0 : (vol / 100) * 0.6;
+    gain.gain.setTargetAtTime(target, audioCtx.currentTime, 0.04);
+  }
+
+  function teardown() {
+    if (!audioCtx) return;
+    const ctx = audioCtx;
+    gain.gain.setTargetAtTime(0, ctx.currentTime, 0.015);
+    setTimeout(() => {
+      try { if (osc) osc.stop(); } catch (e) {}
+      try { if (noiseSrc) noiseSrc.stop(); } catch (e) {}
+      ctx.close().catch(() => {});
+    }, 120);
+    osc = null; noiseSrc = null; gain = null; audioCtx = null;
+  }
+
+  // ================= 主循环 =================
+  function loop(ts) {
+    if (!running) return;
+    const dt = clamp((ts - lastTs) / 1000, 0.001, 0.1);
+    lastTs = ts;
+
+    const elapsed = audioCtx.currentTime - t0;
+    const f = computeFreq(elapsed);
+
+    if (f !== null && osc) {
+      // 平滑跳变，消除咔哒声
+      osc.frequency.setTargetAtTime(f, audioCtx.currentTime, 0.012);
+      curFreq = f;
+      freqValue.textContent = f >= 100 ? f.toFixed(0) : f.toFixed(1);
+    } else if (f === null) {
+      freqValue.textContent = '—';
+    }
+
+    trace.push({ t: elapsed, f });
+    while (trace.length && elapsed - trace[0].t > winSec + 2) trace.shift();
+
+    drawTrace();
+    requestAnimationFrame(loop);
+  }
+
+  // ================= 控件 =================
+  document.getElementById('waveSeg').addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-wave]');
+    if (!btn) return;
+    document.querySelectorAll('#waveSeg button').forEach(b => b.classList.remove('on'));
+    btn.classList.add('on');
+    const prev = wave;
+    wave = btn.dataset.wave;
+    waveMeta.textContent = WAVE_NAME[wave];
+    if (running && prev !== wave) restartAudio();   // 运行中切换波形：重建声源
+  });
+
+  document.getElementById('modeSeg').addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-mode]');
+    if (!btn) return;
+    document.querySelectorAll('#modeSeg button').forEach(b => b.classList.remove('on'));
+    btn.classList.add('on');
+    mode = btn.dataset.mode;
+    modeMeta.textContent = MODE_NAME[mode];
+    fixedGroup.classList.toggle('hidden', mode !== 'fixed');
+    sweepGroup.classList.toggle('hidden', mode !== 'sweep');
+    stepGroup.classList.toggle('hidden', mode !== 'step');
+    if (running) t0 = audioCtx.currentTime;   // 切模式重置计时
+  });
+
+  document.getElementById('dirSeg').addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-dir]');
+    if (!btn) return;
+    document.querySelectorAll('#dirSeg button').forEach(b => b.classList.remove('on'));
+    btn.classList.add('on');
+    dir = btn.dataset.dir;
+    if (running) t0 = audioCtx.currentTime;
+  });
+
+  document.getElementById('endSeg').addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-end]');
+    if (!btn) return;
+    document.querySelectorAll('#endSeg button').forEach(b => b.classList.remove('on'));
+    btn.classList.add('on');
+    endMode = btn.dataset.end;
+    if (running) t0 = audioCtx.currentTime;
+  });
+
+  document.getElementById('winSeg').addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-win]');
+    if (!btn) return;
+    document.querySelectorAll('#winSeg button').forEach(b => b.classList.remove('on'));
+    btn.classList.add('on');
+    winSec = +btn.dataset.win;
+  });
+
+  function setFixedFreq(f, syncSlider) {
+    fixedFreq = clamp(f, F_MIN, F_MAX);
+    freqNum.textContent = fixedFreq >= 100 ? fixedFreq.toFixed(0) + ' Hz' : fixedFreq.toFixed(1) + ' Hz';
+    if (syncSlider) freqSlider.value = Math.round(freqToSlider(fixedFreq));
+    if (running && mode === 'fixed' && osc) osc.frequency.setTargetAtTime(fixedFreq, audioCtx.currentTime, 0.012);
+  }
+  freqSlider.addEventListener('input', () => setFixedFreq(sliderToFreq(+freqSlider.value), false));
+  document.getElementById('presetSeg').addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-f]');
+    if (!btn) return;
+    setFixedFreq(+btn.dataset.f, true);
+  });
+
+  volSlider.addEventListener('input', () => {
+    vol = +volSlider.value;
+    volNum.textContent = vol + '%';
+    if (running && gain && !muted) gain.gain.setTargetAtTime((vol / 100) * 0.6, audioCtx.currentTime, 0.03);
+  });
+
+  muteBtn.addEventListener('click', () => {
+    muted = !muted;
+    muteBtn.textContent = muted ? '取消静音' : '静音';
+    muteBtn.classList.toggle('on', muted);
+    if (running && gain) gain.gain.setTargetAtTime(muted ? 0 : (vol / 100) * 0.6, audioCtx.currentTime, 0.03);
+  });
+
+  function setStatus(msg, isErr) {
+    statusEl.textContent = msg;
+    statusEl.classList.toggle('err', !!isErr);
+  }
+
+  async function restartAudio() {
+    teardown();
+    await new Promise(r => setTimeout(r, 160));
+    buildAudio();
+    t0 = audioCtx.currentTime;
+    trace = [];
+    lastTs = performance.now();
+  }
+
+  startBtn.addEventListener('click', async () => {
+    if (running) {
+      running = false;
+      teardown();
+      startBtn.textContent = '启动输出 / START';
+      startBtn.classList.remove('live');
+      badge.textContent = 'IDLE';
+      freqValue.textContent = '--';
+      setStatus('已停止输出');
+      drawTrace();
+      return;
+    }
+    try {
+      buildAudio();
+      if (audioCtx.state === 'suspended') await audioCtx.resume();
+      running = true;
+      t0 = audioCtx.currentTime;
+      trace = [];
+      lastTs = performance.now();
+      startBtn.textContent = '停止输出 / STOP';
+      startBtn.classList.add('live');
+      badge.textContent = 'OUTPUT LIVE';
+      setStatus(`输出中 · ${WAVE_NAME[wave]} · ${MODE_NAME[mode]} · 采样率 ${audioCtx.sampleRate} Hz`);
+      requestAnimationFrame(loop);
+    } catch (err) {
+      setStatus('无法启动音频输出：' + (err && err.message ? err.message : err), true);
+      badge.textContent = 'ERROR';
+    }
+  });
+
+  // 测试钩子（只读）
+  window.__hzgen = () => ({ running, wave, mode, curFreq, vol, muted, ctxState: audioCtx && audioCtx.state });
+
+  // ================= 启动 =================
+  setFixedFreq(100, true);
+  resize();
+})();
+</script>
+</body>
+</html>

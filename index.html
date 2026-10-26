@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en" style="font-size: 72px; --white: #ffffff; --black: #000000; --white-shadow: #d9d9d9; --bg: #efefef"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><meta name="viewport" content="width=device-width,user-scalable=no,initial-scale=1,maximum-scale=1,minimum-scale=1"><meta name="keywords" content="前端开发, 前端开发工具, 开发工具, 工程化,工程化工具, js, node, css, 在线工具,vscode, 插件"><meta name="description" content="toolkit是前端开发,全栈开发,工程化的常用工具箱"><title>Toolkit工具</title><link rel="dns-prefetch" href="https://images.gitee.com"><link rel="dns-prefetch" href="https://foruda.gitee.com"><link rel="icon" href="https://foruda.gitee.com/images/1724389275442552606/1cc518f9_8031453.png"><link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#B12A34"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="toolkit"><link rel="apple-touch-icon" href="pwa/apple-touch-icon.png"><script>(function (win, lib) {
+<!DOCTYPE html><html lang="en" style="font-size: 72px; --white: #ffffff; --black: #000000; --white-shadow: #d9d9d9; --bg: #efefef"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><meta name="viewport" content="width=device-width,user-scalable=no,initial-scale=1,maximum-scale=1,minimum-scale=1"><meta name="keywords" content="前端开发, 前端开发工具, 开发工具, 工程化,工程化工具, js, node, css, 在线工具,vscode, 插件"><meta name="description" content="toolkit是前端开发,全栈开发,工程化的常用工具箱"><title>Toolkit工具</title><link rel="dns-prefetch" href="https://images.gitee.com"><link rel="dns-prefetch" href="https://foruda.gitee.com"><link rel="icon" href="https://foruda.gitee.com/images/1724389275442552606/1cc518f9_8031453.png"><link rel="manifest" href="manifest.webmanifest"><link rel="manifest" href="manifest.json"><script>(function (win, lib) {
         var doc = win.document;
         var docEl = doc.documentElement;
         var metaEl = doc.querySelector('meta[name="viewport"]');
@@ -362,13 +362,22 @@
       });
       window.addEventListener("DOMContentLoaded", documentLoadHandler);
       window.addEventListener("load", () => {});
-      if ("serviceWorker" in navigator) {
-        window.addEventListener("load", function () {
-          navigator.serviceWorker.register("./service-worker.js").catch(function () {});
-        });
-        navigator.serviceWorker.addEventListener("controllerchange", function () {
-          if (window.__swRefreshing) return;
-          window.__swRefreshing = true;
-          window.location.reload();
-        });
-      }</script><script src="./vendors~index-bundle.js"></script><script src="./index-bundle.js"></script></body></html>
+      // if('serviceWorker' in navigator) {
+      //   navigator.serviceWorker.register('./sw.js?'+Date.now()).then((registration) => {
+      //     Notification.requestPermission()
+      //       .then(status => {
+      //         if (status === 'granted') {
+      //           // registration.showNotification('title')
+      //         }
+      //       })
+      //   });
+      //   navigator.serviceWorker.addEventListener('controllerchange', function (ev) {
+      //     // console.log('%csw改变','background:#000;color:#fff')
+      //     // var options = {
+      //     //     body: '测试内容',
+      //     //     icon: 'https://images.gitee.com/uploads/images/2022/0415/133442_083a9916_8031453.png'
+      //     // }
+      //     // new Notification('测试title', options)
+      //     // window.location.reload()
+      //   });
+      // };</script><script src="./vendors~index-bundle.js"></script><script src="./index-bundle.js"></script></body></html>

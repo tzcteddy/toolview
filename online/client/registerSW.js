@@ -1,0 +1,1 @@
+if('serviceWorker' in navigator) {window.addEventListener('load', () => {navigator.serviceWorker.register('/toolview/online/client/sw.js', { scope: '/toolview/online/client/' })})}

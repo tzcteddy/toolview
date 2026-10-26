@@ -1,0 +1,206 @@
+<!DOCTYPE html><meta charset="utf-8"><h1 id="噪声取证系统新-pages-目录">噪声取证系统（新 pages 目录）</h1>
+<h2 id="目标与边界">目标与边界</h2>
+<ul>
+<li><strong>目的</strong>：现场采集可回放的 <strong>时间 + 视频/音频 + 分贝（A 计权 Lp）</strong> 证据链，支持本地历史、删除、导出/导入、回放分析。</li>
+<li><strong>不动</strong> <a href="packages/toolkit-online/src/pages/media/"><code>pages/media/</code></a> 及 <code>/media</code> 路由；新入口单独路由与侧栏项（如「噪声取证」→ <code>/noise-evidence</code>）。</li>
+<li><strong>技术栈</strong>：沿用 Astro + Vue3、现有 <a href="packages/toolkit-online/src/layouts/Layout.astro"><code>Layout.astro</code></a> 全屏模式；<strong>只读复用</strong> <a href="packages/toolkit-online/src/pages/media/lib/audio-meter.ts"><code>media/lib/audio-meter.ts</code></a>、<a href="packages/toolkit-online/src/pages/media/lib/permissions.ts"><code>permissions.ts</code></a>、<a href="packages/toolkit-online/src/pages/media/lib/settings.ts"><code>settings.ts</code></a> 中计权/采集逻辑（不在 media 目录改代码，必要时在新目录做薄封装）。</li>
+</ul>
+<h2 id="路由与页面">路由与页面</h2>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>路由</th><th>页面</th><th>职责</th></tr></thead><tbody><tr><td><code>/noise-evidence</code></td><td><code>index.astro</code></td><td>首页：采集、导入、历史列表、存储占用进度条</td></tr><tr><td><code>/noise-evidence/capture</code></td><td><code>capture.astro</code></td><td>采集中：与现监控类似的 Canvas OSD + <strong>频谱图</strong>；<strong>无扬声器播放</strong>（<code>video</code>/<code>audio</code> 元素 <code>muted</code>，不连 destination）</td></tr><tr><td><code>/noise-evidence/play</code></td><td><code>play.astro</code></td><td>回放：<code>?id=</code>；<code>&#x3C;video></code>/<code>&#x3C;audio></code> 可控 + 同步 Canvas（时间、Lp/Leq 曲线、频谱）；<strong>可听回放</strong></td></tr></tbody></table>
+<p>侧栏：<a href="packages/toolkit-online/src/config/nav.js"><code>nav.js</code></a> 增加一项，与「监控」并列。</p>
+<h2 id="模块划分目录约定">模块划分（目录约定）</h2>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>pages/noise-evidence/</span></span>
+<span class="line"><span>  index.astro, capture.astro, play.astro</span></span>
+<span class="line"><span>  components/          # Vue 壳：HomeView, CaptureView, PlayerView, HistoryList, StorageBar, OverlimitFrame</span></span>
+<span class="line"><span>  lib/</span></span>
+<span class="line"><span>    capture/           # CaptureSession：GUM、MediaRecorder、meter 挂接、指标采样</span></span>
+<span class="line"><span>    player/            # PlayerSession：Blob URL、seek、与 metrics 对齐</span></span>
+<span class="line"><span>    storage/           # IndexedDB：schema、CRUD、分块写入</span></span>
+<span class="line"><span>    export-import/     # manifest + ZIP（或单文件 .nrec.zip）</span></span>
+<span class="line"><span>    viz/               # Canvas：复用 renderer 思路 + 频谱条/瀑布（capture/play 共用）</span></span>
+<span class="line"><span>    threshold.ts       # 昼/夜阈值与红边强度</span></span>
+<span class="line"><span>    types.ts</span></span></code></pre>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="mermaid"><code><span class="line"><span style="color:#E1E4E8">flowchart TB</span></span>
+<span class="line"><span style="color:#E1E4E8">  subgraph ui [UI]</span></span>
+<span class="line"><span style="color:#E1E4E8">    Home[HomeView]</span></span>
+<span class="line"><span style="color:#E1E4E8">    Cap[CaptureView]</span></span>
+<span class="line"><span style="color:#E1E4E8">    Play[PlayerView]</span></span>
+<span class="line"><span style="color:#E1E4E8">  end</span></span>
+<span class="line"><span style="color:#E1E4E8">  subgraph modules [Lib]</span></span>
+<span class="line"><span style="color:#E1E4E8">    CaptureMod[capture]</span></span>
+<span class="line"><span style="color:#E1E4E8">    PlayerMod[player]</span></span>
+<span class="line"><span style="color:#E1E4E8">    StoreMod[storage]</span></span>
+<span class="line"><span style="color:#E1E4E8">    IO[export-import]</span></span>
+<span class="line"><span style="color:#E1E4E8">    Viz[viz]</span></span>
+<span class="line"><span style="color:#E1E4E8">  end</span></span>
+<span class="line"><span style="color:#E1E4E8">  Home --> StoreMod</span></span>
+<span class="line"><span style="color:#E1E4E8">  Home --> IO</span></span>
+<span class="line"><span style="color:#E1E4E8">  Cap --> CaptureMod</span></span>
+<span class="line"><span style="color:#E1E4E8">  CaptureMod --> StoreMod</span></span>
+<span class="line"><span style="color:#E1E4E8">  CaptureMod --> Viz</span></span>
+<span class="line"><span style="color:#E1E4E8">  Play --> PlayerMod</span></span>
+<span class="line"><span style="color:#E1E4E8">  PlayerMod --> StoreMod</span></span>
+<span class="line"><span style="color:#E1E4E8">  PlayerMod --> Viz</span></span>
+<span class="line"><span style="color:#E1E4E8">  IO --> StoreMod</span></span></code></pre>
+<h2 id="采集页-vs-播放器与现监控对齐--差异">采集页 vs 播放器（与现监控对齐 + 差异）</h2>
+<p><strong>与 <a href="packages/toolkit-online/src/pages/media/components/MediaMonitor.vue"><code>MediaMonitor.vue</code></a> 一致的部分</strong></p>
+<ul>
+<li>单 Canvas 主视觉：时钟、仪表盘 Lp、Min/Avg/Max、Leq 波形区（样式沿用 <a href="packages/toolkit-online/src/pages/media/lib/renderer.ts"><code>renderer.ts</code></a> 色板与布局习惯）。</li>
+<li>底栏：麦克风 / 摄像头按需 / 翻转 / 录屏（可选 V1 仅摄像头+麦）/ 设置（满幅 <code>fsRef</code>、响应速度等可复用 settings 结构，<strong>独立 localStorage key</strong>，避免污染 <code>toolkit-media-settings</code>）。</li>
+</ul>
+<p><strong>采集页新增</strong></p>
+<ul>
+<li><strong>实时频谱</strong>：主线程或 Worklet 侧已有功率谱时，取 <strong>对数频段 32 条</strong> 画条形/渐变（与 Lp 同源，不另开 essentia 实例）。</li>
+<li><strong>录制状态</strong>：顶栏或底栏「REC + 时长」；停止后写库并跳转首页或回放。</li>
+</ul>
+<p><strong>采集页刻意不做</strong></p>
+<ul>
+<li>不对用户播放采集音频（分析链可 silent gain，与现 meter 一致）。</li>
+</ul>
+<p><strong>播放器新增</strong></p>
+<ul>
+<li>HTML5 <code>video</code>/<code>audio</code> 控制进度；Canvas 显示 <strong>录制开始时刻 + 当前偏移</strong> 的 wall-clock 时间（<code>startedAt + currentTime</code>）。</li>
+<li>曲线/频谱：优先 <strong>读已存 metrics</strong>；若某段无频谱数据，回放时对 <strong>已存 audio Blob</strong> 按需补算（可选 V2，V1 可只显示 Lp 曲线 + 实时频谱）。</li>
+</ul>
+<h2 id="存储方案indexeddb--是否存分贝频谱">存储方案（IndexedDB + 是否存分贝/频谱）</h2>
+<p><strong>原则</strong>：取证核心是 <strong>可核验的时间轴 + 原始音视频</strong>；可视化数据为 <strong>可重建但宜缓存</strong> 的衍生数据。</p>
+<h3 id="建议存储内容推荐默认">建议存储内容（推荐默认）</h3>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>数据</th><th>是否存</th><th>说明</th></tr></thead><tbody><tr><td>视频 Blob</td><td>可选存</td><td>摄像头开则 <code>MediaRecorder</code> 视频轨；关则仅音频</td></tr><tr><td>音频 Blob</td><td><strong>必存</strong></td><td>单独 <code>audio/webm</code> 或与视频 mux；回放与再分析基准</td></tr><tr><td><strong>metrics 时间序列</strong></td><td><strong>强烈建议存</strong></td><td>约 <strong>2 Hz</strong>：<code>{ tMs, lpA, leqA? }</code>；整段 1h ≈ 7200 点，JSON 几十 KB，回放曲线零重算</td></tr><tr><td><strong>频谱摘要</strong></td><td><strong>建议稀疏存</strong></td><td><strong>1 Hz、32 个对数频段</strong> 能量（Float32 或 uint16 量化）；1h ≈ 3600×32×2B ≈ 230KB；足够回放「频谱动画」</td></tr><tr><td>全分辨率 2048-bin @ 12Hz</td><td><strong>不存</strong></td><td>体积过大，无取证必要</td></tr></tbody></table>
+<p><strong>不存也可工作</strong>：仅音视频 + 开始/结束时间；回放时对整段音频离线分析——手机 CPU 高、seek 慢，<strong>不推荐作为默认</strong>。</p>
+<p><strong>分块写入（防崩溃丢数）</strong>：采集中每 <strong>10s</strong> 将 metrics/spectrum 追加写入 IDB 的 <code>chunks</code> 子记录，结束时 merge 到 <code>recordings</code> 主记录并标记 <code>complete</code>。</p>
+<h3 id="indexeddb-schemav1">IndexedDB Schema（V1）</h3>
+<ul>
+<li>DB 名：<code>toolkit-noise-evidence</code>，version 1</li>
+<li><strong><code>recordings</code></strong>（主索引 <code>id</code>，按 <code>startedAt</code> 排序）
+<ul>
+<li><code>id</code>, <code>startedAt</code>, <code>endedAt</code>, <code>durationMs</code>, <code>title?</code>, <code>videoMime</code>, <code>audioMime</code>, <code>hasVideo</code>, <code>bytesTotal</code>, <code>fsRef</code>, <code>deviceNote?</code>, <code>status: 'recording'|'complete'|'failed'</code></li>
+</ul>
+</li>
+<li><strong><code>blobs</code></strong>（<code>recordingId</code> + <code>kind: 'video'|'audio'</code>）→ <code>Blob</code></li>
+<li><strong><code>metrics</code></strong>（<code>recordingId</code>）→ 单 Blob：<code>application/octet-stream</code> 紧凑二进制或 gzip JSON</li>
+<li><strong><code>spectrum</code></strong>（<code>recordingId</code>，可选）→ 同上</li>
+</ul>
+<p>封装：<a href="packages/toolkit-online/src/pages/noise-evidence/lib/storage/db.ts"><code>lib/storage/db.ts</code></a> + <code>recordingRepository.ts</code>（list / get / delete / appendChunk / finalize）。</p>
+<h2 id="导出--导入">导出 / 导入</h2>
+<p><strong>格式</strong>：<code>.nrec.zip</code>（无新依赖可用 JSZip 或 <strong>手动 ZIP</strong>；若加依赖优先 <code>fflate</code> 体积小）</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>manifest.json    # id, startedAt, endedAt, fsRef, thresholds, mime types</span></span>
+<span class="line"><span>metrics.bin      # 或 metrics.json</span></span>
+<span class="line"><span>spectrum.bin     # 可选</span></span>
+<span class="line"><span>video.webm</span></span>
+<span class="line"><span>audio.webm</span></span></code></pre>
+<ul>
+<li><strong>导出</strong>：从 IDB 读主记录 + blobs，打包下载。</li>
+<li><strong>导入</strong>：解压校验 manifest → 生成新 <code>id</code>（保留原 <code>startedAt</code> 作展示）→ 写入 IDB → 首页列表可见 → 进播放页。</li>
+</ul>
+<h2 id="首页-ui">首页 UI</h2>
+<ul>
+<li><strong>采集</strong>：跳转 <code>/noise-evidence/capture</code>（首次进入再请求麦克风/相机，逻辑同现监控「开始只麦、相机按需」）。</li>
+<li><strong>导入</strong>：<code>&#x3C;input type="file" accept=".zip,.nrec.zip"></code>。</li>
+<li><strong>历史列表</strong>：时间倒序；项展示开始时间、时长、峰值 Lp、是否有视频；操作 <strong>回放 / 导出 / 删除</strong>（删除确认）。</li>
+<li><strong>可用空间</strong>：<a href="https://developer.mozilla.org/en-US/docs/Web/API/StorageManager/estimate"><code>navigator.storage.estimate()</code></a> 的 <code>usage/quota</code> 进度条 + 文案「已用 x / 可用 y」；辅以本地 <code>sum(recordings.bytesTotal)</code> 与 quota 对照（quota 含全站 IDB）。</li>
+</ul>
+<p>样式：白底卡片列表 + 现有 <code>--danger</code> 主色按钮，与 <a href="packages/toolkit-online/src/pages/media/components/MediaSettings.vue"><code>MediaSettings.vue</code></a> 弹窗风格一致；移动端列表全宽、底栏安全区。</p>
+<h2 id="播放页昼夜阈值与红边">播放页：昼/夜阈值与红边</h2>
+<ul>
+<li><strong>阈值（默认，可后续进设置）</strong>
+<ul>
+<li><strong>昼</strong>（本地 <strong>06:00–22:00</strong>）：Lp(A) <strong>> 55 dB</strong> 触发</li>
+<li><strong>夜</strong>（<strong>22:00–06:00</strong>）：Lp(A) <strong>> 45 dB</strong> 触发</li>
+</ul>
+</li>
+<li><strong>判定时刻</strong>：<code>startedAt + media.currentTime</code> 的本地小时，决定用哪条阈值（跨昼夜录制按当前播放点切换）。</li>
+<li><strong>UI</strong>：全屏 <strong>四边渐变红色遮罩</strong>（参考导航超速），强度随超标幅度 <code>min(1, (lp - limit) / 10)</code> 增加；非全屏闪断，避免癫痫式闪烁（最短保持 300ms）。</li>
+<li><strong>数据源</strong>：回放优先用 metrics 里 <code>lpA</code>；无 metrics 时对 audio 实时 meter（与采集同源）。</li>
+</ul>
+<h2 id="频谱实现v1-轻量">频谱实现（V1 轻量）</h2>
+<ul>
+<li>采集/回放共用：从 meter Worklet 的 <code>msA</code> 同源功率数组 <strong>或</strong> Analyser <code>getFloatFrequencyData</code>（若后续 CPU 优化第一刀）取 32 频段聚合。</li>
+<li>Canvas 区域：波形下方或右侧增加 <strong>SpectrumPanel</strong>（条形图）；播放 seek 时按 <code>tMs</code> 二分查最近 spectrum 帧。</li>
+</ul>
+<h2 id="实施分期">实施分期</h2>
+<p><strong>Phase 1（MVP 取证闭环）</strong></p>
+<ul>
+<li>首页 + IDB CRUD + 采集（音视频录制 + metrics 2Hz）+ 播放（音视频 + 曲线 + 时间 + 红边）+ 删除 + ZIP 导出/导入（manifest + audio 必含，video 可选）。</li>
+</ul>
+<p><strong>Phase 2</strong></p>
+<ul>
+<li>稀疏 spectrum 存储与回放；存储条更精确；采集页设置与 CPU 优化（Analyser 替 essentia）可并行。</li>
+</ul>
+<p><strong>Phase 3</strong></p>
+<ul>
+<li>录屏源、Leq 窗口导出报告摘要、批量导出。</li>
+</ul>
+<h2 id="风险与约束">风险与约束</h2>
+<ul>
+<li><strong>Safari/iOS</strong>：<code>MediaRecorder</code> mime 需探测 <code>video/webm;codecs=vp8,opus</code> 降级；单文件过大受 IDB/quota 限制，长录需提示剩余空间。</li>
+<li><strong>隐私</strong>：纯浏览器本地，不上传；导出文件含音视频，需 UI 提示。</li>
+<li><strong>与 /media 关系</strong>：长期可把 <code>audio-meter</code> 抽到 <code>src/shared/slm/</code>，本计划 <strong>V1 仅 import 只读</strong>，避免双份 essentia 加载（capture/play 各开一次 meter 即可）。</li>
+</ul>
+<h2 id="验收要点">验收要点</h2>
+<ol>
+<li>新路由可访问，侧栏进入；<code>/media</code> 行为不变。</li>
+<li>采集结束 IDB 有记录；列表可删；导出 ZIP 清空浏览器后导入可播。</li>
+<li>回放时间与录制 <code>startedAt</code> 一致递增；昼/夜切换阈值正确；超标红边可见。</li>
+<li>采集中无扬声器出声；播放页可听音频。</li>
+<li>首页 quota 进度条随导入/删除变化。</li>
+</ol>

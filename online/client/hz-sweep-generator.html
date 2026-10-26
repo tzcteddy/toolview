@@ -72,9 +72,17 @@
   .status { grid-column:1 / -1; font-size:11px; letter-spacing:.08em; color:#565656; min-height:14px; text-align:center; }
   .status.err { color:#ff5a5f; }
   .warn { grid-column:1 / -1; font-size:10px; color:#7a5a1a; letter-spacing:.06em; line-height:1.7; border-top:1px solid #161616; padding-top:12px; }
+  .hint { font-size:10px; color:#4a4a4a; line-height:1.7; margin-top:8px; }
 
   footer { margin-top:20px; font-size:10px; color:#3f3f3f; letter-spacing:.1em; text-align:center; line-height:1.9; }
   .hidden { display:none !important; }
+  .waves { display:flex; flex-direction:column; gap:10px; }
+  .wcat { display:flex; align-items:flex-start; gap:12px; }
+  .wcat-t { font-size:10px; color:#4a4a4a; letter-spacing:.14em; min-width:30px; padding:9px 0 0; }
+  .wcat .seg { flex:1; }
+  .inline.range-row { gap:10px; }
+  .inline.range-row input[type="range"] { flex:1; min-width:80px; }
+  .inline.range-row .num { min-width:52px; }
 </style>
 </head>
 <body>
@@ -193,6 +201,27 @@
       </div>
     </div>
 
+    <!-- 脉冲参数（仅脉冲类波形显示） -->
+    <div class="group full hidden" id="pulseGroup">
+      <div class="label">脉冲参数 / Pulse · 模拟敲击楼板</div>
+      <div class="inline range-row" id="pWidthRow">
+        脉宽/宽度 <input type="range" id="pWidth" min="0.5" max="120" step="0.5" value="6" />
+        <span class="num" id="pWidthNum">6 ms</span>
+        <span style="color:#4a4a4a" id="pWidthHint">= 每周期高电平时长</span>
+      </div>
+      <div class="inline range-row hidden" id="pDecayRow">
+        衰减/阻尼 <input type="range" id="pDecay" min="1" max="100" step="1" value="40" />
+        <span class="num" id="pDecayNum">40</span>
+        <span style="color:#4a4a4a">= 余振衰减速度（值越大余振越短）</span>
+      </div>
+      <div class="inline range-row hidden" id="pRepRow">
+        敲击频率 <input type="range" id="pRep" min="0.2" max="20" step="0.1" value="2" />
+        <span class="num" id="pRepNum">2.0 Hz</span>
+        <span style="color:#4a4a4a">= 每秒敲几次（阻尼振荡专属；上方主频率=余振主频）</span>
+      </div>
+      <div class="hint">频率来源：定频模式用「固定频率」滑块，扫频/步进模式跟随自动变化——矩形脉冲/高斯脉冲按此频率重复，阻尼振荡按此频率余振。</div>
+    </div>
+
     <div class="group">
       <div class="label">输出音量 / Volume</div>
       <div class="row">
@@ -255,6 +284,16 @@
   const fixedGroup = document.getElementById('fixedGroup');
   const sweepGroup = document.getElementById('sweepGroup');
   const stepGroup  = document.getElementById('stepGroup');
+  const pulseGroup = document.getElementById('pulseGroup');
+  const pWidthRow = document.getElementById('pWidthRow');
+  const pDecayRow = document.getElementById('pDecayRow');
+  const pRepRow   = document.getElementById('pRepRow');
+  const pWidth = document.getElementById('pWidth');
+  const pDecay = document.getElementById('pDecay');
+  const pRep   = document.getElementById('pRep');
+  const pWidthNum = document.getElementById('pWidthNum');
+  const pDecayNum = document.getElementById('pDecayNum');
+  const pRepNum   = document.getElementById('pRepNum');
 
   const sweepFrom = document.getElementById('sweepFrom');
   const sweepTo   = document.getElementById('sweepTo');
@@ -276,6 +315,12 @@
   // 波形分类（用于控制面板显示/隐藏脉冲参数、以及频率含义）
   const isNoise   = (wv) => ['white','pink','brown','blue','violet','gray'].includes(wv);
   const isPulse   = (wv) => ['pulse','gauss','ringdown'].includes(wv);
+  // 波形 → AudioWorklet 处理器内部 ID
+  const WAVE_ID = {
+    sine:0, square:1, triangle:2, sawtooth:3, revsaw:4,
+    pulse:5, gauss:6, ringdown:7,
+    white:8, pink:9, brown:10, blue:11, violet:12, gray:13
+  };
 
   // ================= 状态 =================
   let wave = 'sine';
@@ -294,7 +339,9 @@
   let muted = false;
 
   let running = false;
-  let audioCtx = null, osc = null, gain = null, noiseSrc = null, noiseGain = null;
+  let audioCtx = null, gain = null;
+  let gen = null;                                   // AudioWorkletNode
+  let freqParam = null, widthParam = null, decayParam = null, repParam = null;
   let t0 = 0;               // 模式起始时间（AudioContext.currentTime）
   let curFreq = 0;          // 当前输出频率
   let trace = [];           // {t, f} 轨迹
@@ -320,9 +367,9 @@
     return a * Math.pow(b / a, clamp(p, 0, 1));
   }
 
-  // 按模式计算当前应输出的频率；返回 null 表示白噪（无频率）
+  // 按模式计算当前应输出的频率；返回 null 表示噪声类（无固定频率）
   function computeFreq(elapsed) {
-    if (wave === 'noise') return null;
+    if (isNoise(wave)) return null;
     if (mode === 'fixed') return fixedFreq;
 
     if (mode === 'sweep') {
@@ -413,7 +460,7 @@
       } else {
         ctx2d.fillStyle = '#3a3a3a';
         ctx2d.textAlign = 'right';
-        ctx2d.fillText('WHITE NOISE —', W - 16, H / 2);
+        ctx2d.fillText(WAVE_NAME[wave] + ' —', W - 16, H / 2);
       }
     } else {
       ctx2d.fillStyle = '#3a3a3a';
@@ -422,33 +469,152 @@
     }
   }
 
-  // ================= 音频输出 =================
-  function buildAudio() {
+  // ================= 音频输出（AudioWorklet 统一合成 14 种波形） =================
+  const WORKLET_SRC = `
+    class HzGenProcessor extends AudioWorkletProcessor {
+      static get parameterDescriptors() {
+        return [
+          { name: 'wave',  defaultValue: 0,   minValue: 0,   maxValue: 13,  automationRate: 'k-rate' },
+          { name: 'freq',  defaultValue: 100, minValue: 0.1, maxValue: 20000, automationRate: 'a-rate' },
+          { name: 'width', defaultValue: 6,   minValue: 0.1, maxValue: 500, automationRate: 'k-rate' },
+          { name: 'decay', defaultValue: 40,  minValue: 1,   maxValue: 100, automationRate: 'k-rate' },
+          { name: 'rep',   defaultValue: 2,   minValue: 0.1, maxValue: 40,  automationRate: 'k-rate' }
+        ];
+      }
+      constructor() {
+        super();
+        this.phase = 0;       // 基础波形相位 0..1
+        this.kPhase = 0;      // 阻尼振荡载波相位
+        this.env = 0;         // 距上次敲击已过秒数
+        this.envActive = false;
+        this.lp1 = 0; this.lp2 = 0;   // 灰噪分频一阶状态
+        this.prev = 0;        // 差分状态（蓝/紫噪）
+        this.brown = 0;       // 棕噪积分状态
+        this.pk = [0,0,0,0,0,0];      // 粉噪滤波器状态
+      }
+      process(inputs, outputs, params) {
+        const out = outputs[0][0];
+        const n = out.length;
+        const sr = sampleRate;
+        const wave = params.wave[0] | 0;
+        const widthMs = params.width[0];
+        const decay = params.decay[0];
+        const rep = params.rep[0];
+        const freq = params.freq;
+        const alpha = decay * 0.25;            // 余振衰减系数 (Np/s)
+        const sigma = Math.max(1e-4, widthMs / 1000);  // 高斯 σ（秒）
+        const sigmaD = Math.min(0.9, sigma * 2.5066 * 100); // 高斯 DC 近似扣除
+
+        for (let i = 0; i < n; i++) {
+          const f = freq.length > 1 ? freq[i] : freq[0];
+          let v = 0;
+
+          if (wave <= 4) {
+            // 经典基础波形：正弦/方波/三角/锯齿/降锯齿
+            this.phase += f / sr;
+            this.phase -= Math.floor(this.phase);
+            const p = this.phase;
+            if (wave === 0)      v = Math.sin(2 * Math.PI * p);
+            else if (wave === 1) v = p < 0.5 ? 1 : -1;
+            else if (wave === 2) v = 4 * Math.abs(p - Math.floor(p + 0.5)) - 1;
+            else if (wave === 3) v = 2 * p - 1;
+            else                 v = 1 - 2 * p;
+          } else if (wave === 5) {
+            // 矩形脉冲：占空比 = 脉宽(ms) × 频率，零均值防直流
+            this.phase += f / sr;
+            this.phase -= Math.floor(this.phase);
+            const d = Math.min(0.9, Math.max(0.001, widthMs * 0.001 * f));
+            v = (this.phase < d ? 1 : 0) - d;
+          } else if (wave === 6) {
+            // 高斯脉冲：周期中心一个钟形尖峰
+            this.phase += f / sr;
+            this.phase -= Math.floor(this.phase);
+            const tt = (this.phase - 0.5) / Math.max(f, 1e-6);
+            const g = Math.exp(-0.5 * (tt / sigma) * (tt / sigma));
+            v = Math.min(1, g - sigmaD * f);
+          } else if (wave === 7) {
+            // 阻尼振荡（敲击余振）：按敲击频率 rep 触发，每次敲击重置包络
+            // 形态 = Ae^{-αt}·sin(2πft)，t 为距本次敲击的时间
+            if (!this.envActive) { this.env = 0; this.kPhase = 0; this.envActive = true; }
+            this.env += 1 / sr;
+            if (this.env >= 1 / rep) { this.env = 0; this.kPhase = 0; }  // 下一次敲击
+            this.kPhase += f / sr;
+            this.kPhase -= Math.floor(this.kPhase);
+            const a = Math.exp(-alpha * this.env);
+            v = a * Math.sin(2 * Math.PI * this.kPhase);
+          } else {
+            // 噪声系列
+            const w = Math.random() * 2 - 1;
+            if (wave === 8) {
+              v = w;                                                    // 白噪
+            } else if (wave === 9) {
+              const b = this.pk;
+              b[0] = 0.99886 * b[0] + w * 0.0555179;
+              b[1] = 0.99332 * b[1] + w * 0.0750759;
+              b[2] = 0.96900 * b[2] + w * 0.1538520;
+              b[3] = 0.86650 * b[3] + w * 0.3104856;
+              b[4] = 0.55000 * b[4] + w * 0.5329522;
+              b[5] = -0.76160 * b[5] - w * 0.0168980;
+              v = (b[0]+b[1]+b[2]+b[3]+b[4]+b[5] + w * 0.5362) * 0.11;   // 粉噪
+            } else if (wave === 10) {
+              this.brown = (this.brown + 0.02 * w) / 1.02;
+              v = this.brown * 3.5;                                      // 棕噪
+            } else if (wave === 11) {
+              const b = this.pk;                                         // 蓝噪 = 粉噪一阶差分 (+3dB/oct)
+              b[0] = 0.99886 * b[0] + w * 0.0555179;
+              b[1] = 0.99332 * b[1] + w * 0.0750759;
+              b[2] = 0.96900 * b[2] + w * 0.1538520;
+              b[3] = 0.86650 * b[3] + w * 0.3104856;
+              b[4] = 0.55000 * b[4] + w * 0.5329522;
+              b[5] = -0.76160 * b[5] - w * 0.0168980;
+              const pink = (b[0]+b[1]+b[2]+b[3]+b[4]+b[5] + w * 0.5362) * 0.11;
+              v = (pink - this.prev) * 0.5; this.prev = pink;
+            } else if (wave === 12) {
+              v = (w - this.prev) * 0.5; this.prev = w;                  // 紫噪 = 白噪一阶差分 (+6dB/oct)
+            } else {
+              this.lp1 += 0.02 * (w - this.lp1);                         // 灰噪：等响度"微笑曲线"近似
+              this.lp2 += 0.50 * (w - this.lp2);
+              const low = this.lp1, high = w - this.lp2, mid = w - low - high;
+              v = 1.5 * low + 0.55 * mid + 1.3 * high;
+            }
+          }
+          out[i] = Math.max(-1, Math.min(1, v * 0.92));
+        }
+        return true;
+      }
+    }
+    registerProcessor('hz-gen', HzGenProcessor);
+  `;
+
+  let workletUrl = null;
+  function getWorkletUrl() {
+    if (!workletUrl) {
+      workletUrl = URL.createObjectURL(new Blob([WORKLET_SRC], { type: 'application/javascript' }));
+    }
+    return workletUrl;
+  }
+
+  async function buildAudio() {
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     gain = audioCtx.createGain();
     gain.gain.value = 0;
     gain.connect(audioCtx.destination);
 
-    if (wave === 'noise') {
-      // 白噪：2s 循环缓冲
-      const len = audioCtx.sampleRate * 2;
-      const buf = audioCtx.createBuffer(1, len, audioCtx.sampleRate);
-      const d = buf.getChannelData(0);
-      for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
-      noiseSrc = audioCtx.createBufferSource();
-      noiseSrc.buffer = buf;
-      noiseSrc.loop = true;
-      noiseSrc.connect(gain);
-      noiseSrc.start();
-      curFreq = 0;
-    } else {
-      osc = audioCtx.createOscillator();
-      osc.type = wave;
-      osc.frequency.value = fixedFreq;
-      osc.connect(gain);
-      osc.start();
-      curFreq = fixedFreq;
-    }
+    await audioCtx.audioWorklet.addModule(getWorkletUrl());
+    gen = new AudioWorkletNode(audioCtx, 'hz-gen', { outputChannelCount: [1] });
+    freqParam  = gen.parameters.get('freq');
+    widthParam = gen.parameters.get('width');
+    decayParam = gen.parameters.get('decay');
+    repParam   = gen.parameters.get('rep');
+    gen.parameters.get('wave').value = WAVE_ID[wave];
+    widthParam.value = +pWidth.value;
+    decayParam.value = +pDecay.value;
+    repParam.value   = +pRep.value;
+    const f0 = computeFreq(0);
+    freqParam.value = (f0 === null ? 100 : f0);
+    curFreq = (f0 === null ? 0 : f0);
+    gen.connect(gain);
+
     // 音量缓升防爆音（120ms）
     const target = muted ? 0 : (vol / 100) * 0.6;
     gain.gain.setTargetAtTime(target, audioCtx.currentTime, 0.04);
@@ -459,11 +625,11 @@
     const ctx = audioCtx;
     gain.gain.setTargetAtTime(0, ctx.currentTime, 0.015);
     setTimeout(() => {
-      try { if (osc) osc.stop(); } catch (e) {}
-      try { if (noiseSrc) noiseSrc.stop(); } catch (e) {}
+      try { if (gen) gen.disconnect(); } catch (e) {}
       ctx.close().catch(() => {});
     }, 120);
-    osc = null; noiseSrc = null; gain = null; audioCtx = null;
+    gen = null; freqParam = widthParam = decayParam = repParam = null;
+    gain = null; audioCtx = null;
   }
 
   // ================= 主循环 =================
@@ -475,9 +641,9 @@
     const elapsed = audioCtx.currentTime - t0;
     const f = computeFreq(elapsed);
 
-    if (f !== null && osc) {
+    if (f !== null && freqParam) {
       // 平滑跳变，消除咔哒声
-      osc.frequency.setTargetAtTime(f, audioCtx.currentTime, 0.012);
+      freqParam.setTargetAtTime(f, audioCtx.currentTime, 0.012);
       curFreq = f;
       freqValue.textContent = f >= 100 ? f.toFixed(0) : f.toFixed(1);
     } else if (f === null) {
@@ -492,15 +658,49 @@
   }
 
   // ================= 控件 =================
-  document.getElementById('waveSeg').addEventListener('click', (e) => {
-    const btn = e.target.closest('button[data-wave]');
-    if (!btn) return;
-    document.querySelectorAll('#waveSeg button').forEach(b => b.classList.remove('on'));
-    btn.classList.add('on');
-    const prev = wave;
-    wave = btn.dataset.wave;
-    waveMeta.textContent = WAVE_NAME[wave];
-    if (running && prev !== wave) restartAudio();   // 运行中切换波形：重建声源
+  // 脉冲参数面板的显隐与内容
+  function syncPulseUI() {
+    const isP = isPulse(wave);
+    pulseGroup.classList.toggle('hidden', !isP);
+    if (!isP) return;
+    // 矩形脉冲/高斯脉冲 → 只显示脉宽；阻尼振荡 → 只显示衰减+敲击频率
+    const isRing = wave === 'ringdown';
+    pWidthRow.classList.toggle('hidden', isRing);
+    pDecayRow.classList.toggle('hidden', !isRing);
+    pRepRow.classList.toggle('hidden', !isRing);
+    // 脉宽提示文案随波形变化
+    pWidthHint.textContent = wave === 'gauss' ? '= 尖峰宽度(σ)' : '= 每周期高电平时长';
+  }
+
+  document.querySelectorAll('.waves button[data-wave]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.waves button[data-wave]').forEach(b => b.classList.remove('on'));
+      btn.classList.add('on');
+      const prev = wave;
+      wave = btn.dataset.wave;
+      waveMeta.textContent = WAVE_NAME[wave];
+      syncPulseUI();
+      liveStatus();
+      if (running && prev !== wave) {
+        // 运行中切换波形：更新 worklet 的 wave 参数，无需重建
+        if (gen) gen.parameters.get('wave').value = WAVE_ID[wave];
+      }
+    });
+  });
+  syncPulseUI();   // 初始化
+
+  // 脉冲参数滑块 → 实时更新 worklet
+  pWidth.addEventListener('input', () => {
+    pWidthNum.textContent = (+pWidth.value).toFixed(1) + ' ms';
+    if (running && widthParam) widthParam.value = +pWidth.value;
+  });
+  pDecay.addEventListener('input', () => {
+    pDecayNum.textContent = pDecay.value;
+    if (running && decayParam) decayParam.value = +pDecay.value;
+  });
+  pRep.addEventListener('input', () => {
+    pRepNum.textContent = (+pRep.value).toFixed(1) + ' Hz';
+    if (running && repParam) repParam.value = +pRep.value;
   });
 
   document.getElementById('modeSeg').addEventListener('click', (e) => {
@@ -513,6 +713,7 @@
     fixedGroup.classList.toggle('hidden', mode !== 'fixed');
     sweepGroup.classList.toggle('hidden', mode !== 'sweep');
     stepGroup.classList.toggle('hidden', mode !== 'step');
+    liveStatus();
     if (running) t0 = audioCtx.currentTime;   // 切模式重置计时
   });
 
@@ -546,7 +747,7 @@
     fixedFreq = clamp(f, F_MIN, F_MAX);
     freqNum.textContent = fixedFreq >= 100 ? fixedFreq.toFixed(0) + ' Hz' : fixedFreq.toFixed(1) + ' Hz';
     if (syncSlider) freqSlider.value = Math.round(freqToSlider(fixedFreq));
-    if (running && mode === 'fixed' && osc) osc.frequency.setTargetAtTime(fixedFreq, audioCtx.currentTime, 0.012);
+    if (running && mode === 'fixed' && freqParam) freqParam.setTargetAtTime(fixedFreq, audioCtx.currentTime, 0.012);
   }
   freqSlider.addEventListener('input', () => setFixedFreq(sliderToFreq(+freqSlider.value), false));
   document.getElementById('presetSeg').addEventListener('click', (e) => {
@@ -572,11 +773,14 @@
     statusEl.textContent = msg;
     statusEl.classList.toggle('err', !!isErr);
   }
+  function liveStatus() {
+    if (running) setStatus(`输出中 · ${WAVE_NAME[wave]} · ${MODE_NAME[mode]} · 采样率 ${audioCtx.sampleRate} Hz`);
+  }
 
   async function restartAudio() {
     teardown();
     await new Promise(r => setTimeout(r, 160));
-    buildAudio();
+    await buildAudio();
     t0 = audioCtx.currentTime;
     trace = [];
     lastTs = performance.now();
@@ -595,7 +799,7 @@
       return;
     }
     try {
-      buildAudio();
+      await buildAudio();
       if (audioCtx.state === 'suspended') await audioCtx.resume();
       running = true;
       t0 = audioCtx.currentTime;
@@ -613,7 +817,16 @@
   });
 
   // 测试钩子（只读）
-  window.__hzgen = () => ({ running, wave, mode, curFreq, vol, muted, ctxState: audioCtx && audioCtx.state });
+  window.__hzgen = () => ({
+    running, wave, waveId: WAVE_ID[wave], mode, curFreq, vol, muted,
+    params: gen ? {
+      freq: +freqParam.value.toFixed(2),
+      width: +widthParam.value.toFixed(2),
+      decay: +decayParam.value.toFixed(2),
+      rep: +repParam.value.toFixed(2),
+    } : null,
+    ctxState: audioCtx && audioCtx.state
+  });
 
   // ================= 启动 =================
   setFixedFreq(100, true);

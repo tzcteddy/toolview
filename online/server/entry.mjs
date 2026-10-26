@@ -1,6 +1,6 @@
 import { renderers } from './renderers.mjs';
-import { c as createExports, s as serverEntrypointModule } from './chunks/_@astrojs-ssr-adapter__sVnl2rU.mjs';
-import { manifest } from './manifest_CfFH5kB_.mjs';
+import { c as createExports, s as serverEntrypointModule } from './chunks/_@astrojs-ssr-adapter_CCEwOahl.mjs';
+import { manifest } from './manifest_D7PhyCUh.mjs';
 
 const serverIslandMap = new Map();;
 
@@ -24,11 +24,26 @@ const _page16 = () => import('./pages/media/prd2.astro.mjs');
 const _page17 = () => import('./pages/media/prd3.astro.mjs');
 const _page18 = () => import('./pages/media/prd4.astro.mjs');
 const _page19 = () => import('./pages/media.astro.mjs');
-const _page20 = () => import('./pages/open-source.astro.mjs');
-const _page21 = () => import('./pages/tools.astro.mjs');
-const _page22 = () => import('./pages/wechat/detail/_title_.astro.mjs');
-const _page23 = () => import('./pages/wechat.astro.mjs');
-const _page24 = () => import('./pages/index.astro.mjs');
+const _page20 = () => import('./pages/noise-evidence/capture.astro.mjs');
+const _page21 = () => import('./pages/noise-evidence/lib/capture/capture-session.astro.mjs');
+const _page22 = () => import('./pages/noise-evidence/lib/capture/pcm-recorder.astro.mjs');
+const _page23 = () => import('./pages/noise-evidence/lib/capture/pcm-wav.astro.mjs');
+const _page24 = () => import('./pages/noise-evidence/lib/export-import/nrec.astro.mjs');
+const _page25 = () => import('./pages/noise-evidence/lib/settings.astro.mjs');
+const _page26 = () => import('./pages/noise-evidence/lib/storage/db.astro.mjs');
+const _page27 = () => import('./pages/noise-evidence/lib/storage/metrics-codec.astro.mjs');
+const _page28 = () => import('./pages/noise-evidence/lib/storage/recordingrepository.astro.mjs');
+const _page29 = () => import('./pages/noise-evidence/lib/threshold.astro.mjs');
+const _page30 = () => import('./pages/noise-evidence/lib/types.astro.mjs');
+const _page31 = () => import('./pages/noise-evidence/lib/viz/evidence-renderer.astro.mjs');
+const _page32 = () => import('./pages/noise-evidence/lib/viz/spectrum-bands.astro.mjs');
+const _page33 = () => import('./pages/noise-evidence/play.astro.mjs');
+const _page34 = () => import('./pages/noise-evidence.astro.mjs');
+const _page35 = () => import('./pages/open-source.astro.mjs');
+const _page36 = () => import('./pages/tools.astro.mjs');
+const _page37 = () => import('./pages/wechat/detail/_title_.astro.mjs');
+const _page38 = () => import('./pages/wechat.astro.mjs');
+const _page39 = () => import('./pages/index.astro.mjs');
 const pageMap = new Map([
     ["src/pages/bg/index.astro", _page0],
     ["src/pages/blogNav/index.astro", _page1],
@@ -50,11 +65,26 @@ const pageMap = new Map([
     ["src/pages/media/prd3.md", _page17],
     ["src/pages/media/prd4.md", _page18],
     ["src/pages/media/index.astro", _page19],
-    ["src/pages/open-source/index.astro", _page20],
-    ["src/pages/tools/index.astro", _page21],
-    ["src/pages/wechat/detail/[title].astro", _page22],
-    ["src/pages/wechat/index.astro", _page23],
-    ["src/pages/index.astro", _page24]
+    ["src/pages/noise-evidence/capture.astro", _page20],
+    ["src/pages/noise-evidence/lib/capture/capture-session.ts", _page21],
+    ["src/pages/noise-evidence/lib/capture/pcm-recorder.ts", _page22],
+    ["src/pages/noise-evidence/lib/capture/pcm-wav.ts", _page23],
+    ["src/pages/noise-evidence/lib/export-import/nrec.ts", _page24],
+    ["src/pages/noise-evidence/lib/settings.ts", _page25],
+    ["src/pages/noise-evidence/lib/storage/db.ts", _page26],
+    ["src/pages/noise-evidence/lib/storage/metrics-codec.ts", _page27],
+    ["src/pages/noise-evidence/lib/storage/recordingRepository.ts", _page28],
+    ["src/pages/noise-evidence/lib/threshold.ts", _page29],
+    ["src/pages/noise-evidence/lib/types.ts", _page30],
+    ["src/pages/noise-evidence/lib/viz/evidence-renderer.ts", _page31],
+    ["src/pages/noise-evidence/lib/viz/spectrum-bands.ts", _page32],
+    ["src/pages/noise-evidence/play.astro", _page33],
+    ["src/pages/noise-evidence/index.astro", _page34],
+    ["src/pages/open-source/index.astro", _page35],
+    ["src/pages/tools/index.astro", _page36],
+    ["src/pages/wechat/detail/[title].astro", _page37],
+    ["src/pages/wechat/index.astro", _page38],
+    ["src/pages/index.astro", _page39]
 ]);
 
 const _manifest = Object.assign(manifest, {

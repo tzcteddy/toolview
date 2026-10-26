@@ -1,6 +1,6 @@
 import { renderers } from './renderers.mjs';
 import { c as createExports, s as serverEntrypointModule } from './chunks/_@astrojs-ssr-adapter_CCEwOahl.mjs';
-import { manifest } from './manifest_B1GiX0FN.mjs';
+import { manifest } from './manifest_C-MMk5Ut.mjs';
 
 const serverIslandMap = new Map();;
 
@@ -43,13 +43,14 @@ const _page35 = () => import('./pages/noise-evidence/lib/threshold.astro.mjs');
 const _page36 = () => import('./pages/noise-evidence/lib/types.astro.mjs');
 const _page37 = () => import('./pages/noise-evidence/lib/viz/evidence-renderer.astro.mjs');
 const _page38 = () => import('./pages/noise-evidence/lib/viz/spectrum-bands.astro.mjs');
-const _page39 = () => import('./pages/noise-evidence/play.astro.mjs');
-const _page40 = () => import('./pages/noise-evidence.astro.mjs');
-const _page41 = () => import('./pages/open-source.astro.mjs');
-const _page42 = () => import('./pages/tools.astro.mjs');
-const _page43 = () => import('./pages/wechat/detail/_title_.astro.mjs');
-const _page44 = () => import('./pages/wechat.astro.mjs');
-const _page45 = () => import('./pages/index.astro.mjs');
+const _page39 = () => import('./pages/noise-evidence/lib/viz/timeline-map.astro.mjs');
+const _page40 = () => import('./pages/noise-evidence/play.astro.mjs');
+const _page41 = () => import('./pages/noise-evidence.astro.mjs');
+const _page42 = () => import('./pages/open-source.astro.mjs');
+const _page43 = () => import('./pages/tools.astro.mjs');
+const _page44 = () => import('./pages/wechat/detail/_title_.astro.mjs');
+const _page45 = () => import('./pages/wechat.astro.mjs');
+const _page46 = () => import('./pages/index.astro.mjs');
 const pageMap = new Map([
     ["src/pages/bg/index.astro", _page0],
     ["src/pages/blogNav/index.astro", _page1],
@@ -90,13 +91,14 @@ const pageMap = new Map([
     ["src/pages/noise-evidence/lib/types.ts", _page36],
     ["src/pages/noise-evidence/lib/viz/evidence-renderer.ts", _page37],
     ["src/pages/noise-evidence/lib/viz/spectrum-bands.ts", _page38],
-    ["src/pages/noise-evidence/play.astro", _page39],
-    ["src/pages/noise-evidence/index.astro", _page40],
-    ["src/pages/open-source/index.astro", _page41],
-    ["src/pages/tools/index.astro", _page42],
-    ["src/pages/wechat/detail/[title].astro", _page43],
-    ["src/pages/wechat/index.astro", _page44],
-    ["src/pages/index.astro", _page45]
+    ["src/pages/noise-evidence/lib/viz/timeline-map.ts", _page39],
+    ["src/pages/noise-evidence/play.astro", _page40],
+    ["src/pages/noise-evidence/index.astro", _page41],
+    ["src/pages/open-source/index.astro", _page42],
+    ["src/pages/tools/index.astro", _page43],
+    ["src/pages/wechat/detail/[title].astro", _page44],
+    ["src/pages/wechat/index.astro", _page45],
+    ["src/pages/index.astro", _page46]
 ]);
 
 const _manifest = Object.assign(manifest, {
